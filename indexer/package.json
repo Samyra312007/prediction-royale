@@ -1,0 +1,19 @@
+{
+  "name": "pmbr-indexer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/eventListener.ts",
+    "dev": "tsx watch src/eventListener.ts"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0"
+  }
+}
