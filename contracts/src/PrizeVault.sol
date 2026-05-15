@@ -15,8 +15,12 @@ contract PrizeVault is ReentrancyGuard {
     event PayoutClaimed(address indexed player, uint256 amount);
 
     modifier onlyLinkedGame() {
-        require(msg.sender == linkedGame || msg.sender == factory, "Not authorized");
+        _onlyLinkedGame();
         _;
+    }
+
+    function _onlyLinkedGame() internal view {
+        require(msg.sender == linkedGame || msg.sender == factory, "Not authorized");
     }
 
     constructor(address _factory, address _linkedGame) {
@@ -52,7 +56,8 @@ contract PrizeVault is ReentrancyGuard {
         require(!hasClaimed[msg.sender], "Already claimed");
         hasClaimed[msg.sender] = true;
         pendingPayouts[msg.sender] = 0;
-        payable(msg.sender).transfer(amount);
+        (bool s, ) = payable(msg.sender).call{value: amount}("");
+        require(s, "Payout failed");
         emit PayoutClaimed(msg.sender, amount);
     }
 

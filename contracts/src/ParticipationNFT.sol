@@ -49,14 +49,14 @@ contract ParticipationNFT is ERC721, Ownable {
                     '{"trait_type":"Rounds Survived","value":"', toString(r.roundsSurvived), '"},',
                     '{"trait_type":"Prize","value":"', toString(r.prizeWon), '"}',
                     '],"image":"data:image/svg+xml;base64,',
-                    _base64Encode(_generateSVG(color, r.gameId, r.finalRank)),
+                    _base64Encode(_generateSvg(color, r.gameId, r.finalRank)),
                     '"}'
                 )
             )
         ));
     }
 
-    function _generateSVG(string memory color, uint256 gameId, uint256 rank) internal pure returns (bytes memory) {
+    function _generateSvg(string memory color, uint256 gameId, uint256 rank) internal pure returns (bytes memory) {
         bytes32 colorHash = keccak256(bytes(color));
         string memory fillColor;
         if (colorHash == keccak256(bytes("gold"))) {

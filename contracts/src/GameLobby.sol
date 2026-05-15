@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+    // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -50,14 +50,22 @@ contract GameLobby is ReentrancyGuard {
     address public thirdPlace;
 
     modifier inState(GameState _state) {
-        require(state == _state, "Wrong game state");
+        _checkState(_state);
         _;
     }
 
     modifier onlyActivePlayer() {
+        _checkActivePlayer();
+        _;
+    }
+
+    function _checkState(GameState _state) internal view {
+        require(state == _state, "Wrong game state");
+    }
+
+    function _checkActivePlayer() internal view {
         require(!isEliminated[msg.sender], "Player eliminated");
         require(_isPlayer(msg.sender), "Not a player");
-        _;
     }
 
     event PlayerJoined(address indexed player, uint256 totalPlayers);
@@ -299,19 +307,23 @@ contract GameLobby is ReentrancyGuard {
 
         if (winner != address(0)) {
             uint256 winnerShare = (remainingPool * 70) / 100;
-            payable(winner).transfer(winnerShare);
+            (bool ws, ) = payable(winner).call{value: winnerShare}("");
+            require(ws, "Winner payout failed");
         }
         if (secondPlace != address(0)) {
             uint256 secondShare = (remainingPool * 20) / 100;
-            payable(secondPlace).transfer(secondShare);
+            (bool ss, ) = payable(secondPlace).call{value: secondShare}("");
+            require(ss, "Second payout failed");
         }
         if (thirdPlace != address(0)) {
             uint256 thirdShare = (remainingPool * 10) / 100;
-            payable(thirdPlace).transfer(thirdShare);
+            (bool ts, ) = payable(thirdPlace).call{value: thirdShare}("");
+            require(ts, "Third payout failed");
         }
 
         if (fee > 0) {
-            payable(IGameFactory(factory).feeRecipient()).transfer(fee);
+            (bool fs, ) = payable(IGameFactory(factory).feeRecipient()).call{value: fee}("");
+            require(fs, "Fee transfer failed");
         }
 
         emit GameCompleted(winner, remainingPool);
@@ -322,7 +334,8 @@ contract GameLobby is ReentrancyGuard {
         require(state == GameState.CANCELLED, "Not cancelled");
         for (uint256 i = 0; i < activePlayers.length; i++) {
             if (!isEliminated[activePlayers[i]]) {
-                payable(activePlayers[i]).transfer(stakeAmount);
+                (bool s, ) = payable(activePlayers[i]).call{value: stakeAmount}("");
+                require(s, "Refund failed");
             }
         }
     }
