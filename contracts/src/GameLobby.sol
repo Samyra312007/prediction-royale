@@ -1,4 +1,4 @@
-    // SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -6,6 +6,7 @@ import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IGameFactory.sol";
 import "./ScoreEngine.sol";
 import "./ParticipationNFT.sol";
+import "./PrizeVault.sol";
 
 contract GameLobby is ReentrancyGuard {
     enum GameState { OPEN, ACTIVE, COMPLETED, CANCELLED }
@@ -54,6 +55,8 @@ contract GameLobby is ReentrancyGuard {
 
     ScoreEngine public scoreEngine;
     ParticipationNFT public participationNFT;
+    PrizeVault public prizeVault;
+    int256 public lastKnownPrice;
 
     modifier inState(GameState _state) {
         _checkState(_state);
@@ -112,6 +115,16 @@ contract GameLobby is ReentrancyGuard {
         return false;
     }
 
+    function _fetchPrice() internal returns (int256) {
+        try IOracleAdapter(oracleFeed).getLatestPrice() returns (int256 price, uint256) {
+            lastKnownPrice = price;
+            return price;
+        } catch {
+            require(lastKnownPrice != 0, "Oracle failed, no cached price");
+            return lastKnownPrice;
+        }
+    }
+
     function joinGame() external payable inState(GameState.OPEN) {
         require(msg.value == stakeAmount, "Wrong stake amount");
         require(players.length < maxPlayers, "Game full");
@@ -143,9 +156,8 @@ contract GameLobby is ReentrancyGuard {
         currentRound++;
         require(currentRound <= roundCount, "All rounds done");
 
-        (int256 price, ) = IOracleAdapter(oracleFeed).getLatestPrice();
-        int256 baseline = price;
-        int256 target = baseline + (baseline * 5) / 10000;
+        int256 price = _fetchPrice();
+        int256 target = price + (price * 5) / 10000;
 
         RoundData memory newRound = RoundData({
             roundId: currentRound,
@@ -200,7 +212,7 @@ contract GameLobby is ReentrancyGuard {
         require(!round.isResolved, "Already resolved");
         require(block.timestamp > round.revealDeadline, "Reveal window not closed");
 
-        (int256 resolvedPrice, ) = IOracleAdapter(oracleFeed).getLatestPrice();
+        int256 resolvedPrice = _fetchPrice();
         round.resolvedValue = resolvedPrice;
         round.isResolved = true;
 
@@ -288,25 +300,33 @@ contract GameLobby is ReentrancyGuard {
         uint256 fee = (prizePool * 3) / 100;
         uint256 remainingPool = prizePool - fee;
 
-        if (winner != address(0)) {
-            uint256 winnerShare = (remainingPool * 70) / 100;
-            (bool ws, ) = payable(winner).call{value: winnerShare}("");
-            require(ws, "Winner payout failed");
-        }
-        if (secondPlace != address(0)) {
-            uint256 secondShare = (remainingPool * 20) / 100;
-            (bool ss, ) = payable(secondPlace).call{value: secondShare}("");
-            require(ss, "Second payout failed");
-        }
-        if (thirdPlace != address(0)) {
-            uint256 thirdShare = (remainingPool * 10) / 100;
-            (bool ts, ) = payable(thirdPlace).call{value: thirdShare}("");
-            require(ts, "Third payout failed");
-        }
-
         if (fee > 0) {
             (bool fs, ) = payable(IGameFactory(factory).feeRecipient()).call{value: fee}("");
             require(fs, "Fee transfer failed");
+        }
+
+        uint256 winnerShare = winner != address(0) ? (remainingPool * 70) / 100 : 0;
+        uint256 secondShare = secondPlace != address(0) ? (remainingPool * 20) / 100 : 0;
+        uint256 thirdShare = thirdPlace != address(0) ? (remainingPool * 10) / 100 : 0;
+
+        if (remainingPool > 0 && winner != address(0)) {
+            uint256 prizeCount = 1;
+            if (secondPlace != address(0)) prizeCount++;
+            if (thirdPlace != address(0)) prizeCount++;
+            address[] memory winners = new address[](prizeCount);
+            uint256[] memory amounts = new uint256[](prizeCount);
+            winners[0] = winner;
+            amounts[0] = winnerShare;
+            if (secondPlace != address(0)) {
+                winners[1] = secondPlace;
+                amounts[1] = secondShare;
+            }
+            if (thirdPlace != address(0)) {
+                winners[prizeCount - 1] = thirdPlace;
+                amounts[prizeCount - 1] = thirdShare;
+            }
+            prizeVault.deposit{value: remainingPool}();
+            prizeVault.allocatePrizes(winners, amounts);
         }
 
         for (uint256 i = 0; i < players.length; i++) {
@@ -322,21 +342,32 @@ contract GameLobby is ReentrancyGuard {
                 gameId: gameId,
                 finalRank: rank,
                 roundsSurvived: isEliminated[player] ? (currentRound - 1) : currentRound,
-                prizeWon: player == winner ? (remainingPool * 70) / 100 :
-                          player == secondPlace ? (remainingPool * 20) / 100 :
-                          player == thirdPlace ? (remainingPool * 10) / 100 : 0
+                prizeWon: player == winner ? winnerShare :
+                          player == secondPlace ? secondShare :
+                          player == thirdPlace ? thirdShare : 0
             }));
         }
 
         emit GameCompleted(winner, remainingPool);
     }
 
+    function setPrizeVault(address _vault) external {
+        require(msg.sender == factory, "Only factory");
+        require(address(prizeVault) == address(0), "Already set");
+        prizeVault = PrizeVault(_vault);
+    }
+
+    function claimPrize() external nonReentrant {
+        require(state == GameState.COMPLETED, "Game not completed");
+        prizeVault.claimPayout();
+    }
+
     function emergencyWithdraw() external {
         require(msg.sender == factory, "Only factory");
         require(state == GameState.CANCELLED, "Not cancelled");
-        for (uint256 i = 0; i < activePlayers.length; i++) {
-            if (!isEliminated[activePlayers[i]]) {
-                (bool s, ) = payable(activePlayers[i]).call{value: stakeAmount}("");
+        for (uint256 i = 0; i < players.length; i++) {
+            if (!isEliminated[players[i]]) {
+                (bool s, ) = payable(players[i]).call{value: stakeAmount}("");
                 require(s, "Refund failed");
             }
         }

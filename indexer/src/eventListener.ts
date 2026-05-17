@@ -163,7 +163,13 @@ function listenToLobby(lobbyAddress: string) {
   });
 }
 
-main().catch(console.error);
+async function start() {
+  for (let i = 0; i < 10; i++) {
+    try { await main(); break; }
+    catch (e) { console.error("Indexer error, retrying in", Math.pow(2, i) + "s:", e); await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000)); }
+  }
+}
+start();
 
 process.on("SIGINT", () => {
   console.log("Shutting down indexer...");

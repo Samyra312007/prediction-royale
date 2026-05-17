@@ -6,4 +6,5 @@ interface IGameFactory {
     function protocolFeePercent() external view returns (uint256);
     function scoreEngine() external view returns (address);
     function participationNFT() external view returns (address);
+    function gameVaults(address gameLobby) external view returns (address);
 }

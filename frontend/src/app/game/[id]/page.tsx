@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { config } from "../../wagmi";
 import GameLobbyABI from "@/lib/abi/GameLobby.json";
-import { CONTRACT_ADDRESSES, OracleAdapterABI } from "@/lib/contracts";
+import { CONTRACT_ADDRESSES, OracleAdapterABI, PrizeVaultABI, GameFactoryABI } from "@/lib/contracts";
 import { Navbar } from "@/components/Navbar";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { PredictionButtons } from "@/components/PredictionButtons";
@@ -28,6 +28,7 @@ import {
   getStoredValue,
 } from "@/lib/commitReveal";
 import { useBTCPrice } from "@/hooks/useBTCPrice";
+import { supabase } from "@/lib/supabase";
 import { PriceChart } from "@/components/PriceChart";
 import {
   TrophyIcon,
@@ -87,6 +88,10 @@ export default function GamePage() {
   const [loading, setLoading] = useState(true);
   const [revealing, setRevealing] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [vaultAddress, setVaultAddress] = useState<`0x${string}`>("0x0" as `0x${string}`);
+  const [pendingPayout, setPendingPayout] = useState("0");
+  const [hasClaimedVault, setHasClaimedVault] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [priceHistory, setPriceHistory] = useState<{ timestamp: string; price: number }[]>([]);
 
   const { formattedPrice, change24h, price, isLoading: priceLoading } = useBTCPrice();
@@ -144,6 +149,14 @@ export default function GamePage() {
   }, [isConnected, loadGameData]);
 
   useEffect(() => {
+    const channel = supabase.channel("game-" + gameAddress).on("postgres_changes",
+      { event: "*", schema: "public", table: "games", filter: "contract_address=eq." + gameAddress },
+      () => { loadGameData(); }
+    ).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [gameAddress, loadGameData]);
+
+  useEffect(() => {
     if (price !== null) {
       setPriceHistory((prev) => {
         const next = [...prev, { timestamp: new Date().toISOString(), price }];
@@ -152,6 +165,45 @@ export default function GamePage() {
       });
     }
   }, [price]);
+
+  useEffect(() => {
+    if (!gameAddress || gameAddress === "0x0") return;
+    readContract(config, {
+      address: CONTRACT_ADDRESSES.gameFactory, abi: GameFactoryABI, functionName: "gameVaults", args: [gameAddress as `0x${string}`],
+    }).then((addr) => {
+      if (addr) setVaultAddress(addr as `0x${string}`);
+    }).catch(() => {});
+  }, [gameAddress]);
+
+  useEffect(() => {
+    if (!address || !vaultAddress || vaultAddress === ("0x0" as `0x${string}`)) return;
+    (async () => {
+      try {
+        const payout = await readContract(config, { address: vaultAddress as `0x${string}`, abi: PrizeVaultABI, functionName: "pendingPayouts", args: [address] });
+        const claimed = await readContract(config, { address: vaultAddress as `0x${string}`, abi: PrizeVaultABI, functionName: "hasClaimed", args: [address] });
+        setPendingPayout(String(payout));
+        setHasClaimedVault(Boolean(claimed));
+      } catch {}
+    })();
+  }, [address, vaultAddress]);
+
+  const claimWinnings = async () => {
+    if (!vaultAddress || claiming) return;
+    setClaiming(true);
+    try {
+      const hash = await writeContract(config, {
+        address: vaultAddress as `0x${string}`, abi: PrizeVaultABI, functionName: "claimPayout",
+      });
+      await waitForTransactionReceipt(config, { hash });
+      setHasClaimedVault(true);
+      setPendingPayout("0");
+      showToast("Prize claimed successfully!", "success");
+    } catch (e: any) {
+      showToast(e?.shortMessage || "Claim failed", "error");
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   useEffect(() => {
     if (!address) return;
@@ -573,6 +625,15 @@ export default function GamePage() {
                   >
                     View on Arbiscan
                   </a>
+                  {vaultAddress && vaultAddress !== "0x0" && BigInt(pendingPayout) > 0n && !hasClaimedVault && (
+                    <button
+                      onClick={claimWinnings}
+                      disabled={claiming}
+                      className="inline-flex items-center gap-2 rounded-xl border border-success/50 bg-success/10 px-5 py-2.5 text-sm font-semibold text-success transition-all hover:bg-success/20 disabled:opacity-50"
+                    >
+                      {claiming ? "Claiming..." : `Claim ${Number(pendingPayout) / 1e18} ETH`}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}

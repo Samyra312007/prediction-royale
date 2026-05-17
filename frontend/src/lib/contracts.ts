@@ -20,5 +20,6 @@ export const GAME_STATES = {
 import GameFactoryABI from "./abi/GameFactory.json";
 import GameLobbyABI from "./abi/GameLobby.json";
 import OracleAdapterABI from "./abi/OracleAdapter.json";
+import PrizeVaultABI from "./abi/PrizeVault.json";
 
-export { GameFactoryABI, GameLobbyABI, OracleAdapterABI };
+export { GameFactoryABI, GameLobbyABI, OracleAdapterABI, PrizeVaultABI };

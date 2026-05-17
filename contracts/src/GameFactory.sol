@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./GameLobby.sol";
 import "./ParticipationNFT.sol";
+import "./PrizeVault.sol";
 import "./interfaces/IGameFactory.sol";
 
 contract GameFactory is Ownable, ReentrancyGuard {
@@ -14,6 +15,7 @@ contract GameFactory is Ownable, ReentrancyGuard {
     address public scoreEngine;
     address public participationNFT;
     mapping(uint256 => address) public games;
+    mapping(address => address) public gameVaults;
     mapping(address => uint256[]) private playerGames;
 
     event GameCreated(uint256 indexed gameId, address gameAddress, address creator);
@@ -57,6 +59,9 @@ contract GameFactory is Ownable, ReentrancyGuard {
             oracleFeed
         );
         games[gameCount] = address(lobby);
+        PrizeVault vault = new PrizeVault(address(this), address(lobby));
+        gameVaults[address(lobby)] = address(vault);
+        lobby.setPrizeVault(address(vault));
         ParticipationNFT(IGameFactory(address(this)).participationNFT()).authorizeGame(address(lobby));
         playerGames[msg.sender].push(gameCount);
         emit GameCreated(gameCount, address(lobby), msg.sender);
