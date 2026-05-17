@@ -18,6 +18,7 @@ import {
   CrosshairIcon,
   XIcon,
   ArrowRightIcon,
+  FlameIcon,
 } from "@/components/Icons";
 
 interface LobbyData {
@@ -47,57 +48,59 @@ function LobbyCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -16, scale: 0.95 }}
-      className="group relative overflow-hidden rounded-2xl border border-surface-800 bg-surface-900 p-5 transition-all hover:border-primary-700/50 hover:shadow-lg hover:shadow-primary-700/5"
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      transition={{ type: "spring", bounce: 0.15 }}
+      className="group relative overflow-hidden rounded-2xl border border-surface-800/60 bg-surface-900/40 p-5 backdrop-blur-sm transition-all hover:border-primary-700/40 hover:shadow-lg hover:shadow-primary-700/5"
     >
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary-700/5 blur-2xl transition-all group-hover:bg-primary-700/10" />
+
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <div className="mb-1 flex items-center gap-2">
+          <div className="mb-1.5 flex items-center gap-2">
             <TargetIcon className="h-4 w-4 text-primary-400" />
             <span className="font-mono text-xs text-surface-500">
               {lobby.address.slice(0, 6)}...{lobby.address.slice(-4)}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div
-              className={`h-2 w-2 rounded-full ${
-                lobby.state === 0 ? "bg-success" : "bg-warning"
-              }`}
-            />
-            <span className="text-xs font-medium text-surface-400">
-              {lobby.state === 0 ? "Open" : "In Progress"}
-            </span>
+            {lobby.state === 0 ? (
+              <>
+                <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
+                <span className="text-xs font-medium text-success">Open</span>
+              </>
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-warning" />
+                <span className="text-xs font-medium text-warning">In Progress</span>
+              </>
+            )}
           </div>
         </div>
         <div className="text-right">
-          <p className="font-display text-xl font-bold text-white">
+          <p className="font-display text-2xl font-bold text-white">
             {stakeEth.toFixed(3)}
-            <span className="ml-1 text-sm font-normal text-surface-400">
-              ETH
-            </span>
+            <span className="ml-1 text-sm font-normal text-surface-400">ETH</span>
           </p>
           <p className="text-xs text-surface-500">stake</p>
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-4 rounded-xl bg-surface-950/50 p-3">
-        <div className="text-center">
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        <div className="rounded-xl bg-surface-950/50 p-3 text-center">
           <UsersIcon className="mx-auto mb-1 h-4 w-4 text-cyber-400" />
           <p className="font-mono text-sm font-bold text-white">
             {lobby.playerCount}/{lobby.maxPlayers}
           </p>
           <p className="text-[10px] text-surface-500">Players</p>
         </div>
-        <div className="text-center">
+        <div className="rounded-xl bg-surface-950/50 p-3 text-center">
           <LightningIcon className="mx-auto mb-1 h-4 w-4 text-warning" />
-          <p className="font-mono text-sm font-bold text-white">
-            {lobby.roundCount}
-          </p>
+          <p className="font-mono text-sm font-bold text-white">{lobby.roundCount}</p>
           <p className="text-[10px] text-surface-500">Rounds</p>
         </div>
-        <div className="text-center">
+        <div className="rounded-xl bg-surface-950/50 p-3 text-center">
           <TrophyIcon className="mx-auto mb-1 h-4 w-4 text-primary-400" />
           <p className="font-mono text-sm font-bold text-white">
             {poolEth.toFixed(3)}
@@ -111,10 +114,11 @@ function LobbyCard({
           <span>Capacity</span>
           <span>{Math.round(fill * 100)}%</span>
         </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-800">
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-800">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${fill * 100}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
             className="h-full rounded-full bg-gradient-to-r from-primary-700 to-cyber-400"
           />
         </div>
@@ -122,10 +126,10 @@ function LobbyCard({
 
       <motion.button
         whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        whileTap={{ scale: 0.97 }}
         onClick={onJoin}
         disabled={isJoining || lobby.playerCount >= lobby.maxPlayers}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-700 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-primary-600 to-primary-700 py-2.5 font-semibold text-white shadow-lg shadow-primary-700/15 transition-all hover:from-primary-500 hover:to-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isJoining ? (
           <motion.div
@@ -142,8 +146,6 @@ function LobbyCard({
           </>
         )}
       </motion.button>
-
-      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary-700/5 blur-2xl transition-all group-hover:bg-primary-700/10" />
     </motion.div>
   );
 }
@@ -180,60 +182,24 @@ export default function LobbyPage() {
 
       const lobbyData = await Promise.all(
         addrs.map(async (addr) => {
-          const [
-            stakeAmount,
-            maxPlayers,
-            roundCount,
-            eliminationPercent,
-            state,
-            prizePool,
-          ] = await Promise.all([
-            readContract(config, {
-              address: addr,
-              abi: GameLobbyABI,
-              functionName: "stakeAmount",
-            }),
-            readContract(config, {
-              address: addr,
-              abi: GameLobbyABI,
-              functionName: "maxPlayers",
-            }),
-            readContract(config, {
-              address: addr,
-              abi: GameLobbyABI,
-              functionName: "roundCount",
-            }),
-            readContract(config, {
-              address: addr,
-              abi: GameLobbyABI,
-              functionName: "eliminationPercent",
-            }),
-            readContract(config, {
-              address: addr,
-              abi: GameLobbyABI,
-              functionName: "state",
-            }),
-            readContract(config, {
-              address: addr,
-              abi: GameLobbyABI,
-              functionName: "prizePool",
-            }),
-          ]);
+          const [stakeAmount, maxPlayers, roundCount, eliminationPercent, state, prizePool] =
+            await Promise.all([
+              readContract(config, { address: addr, abi: GameLobbyABI, functionName: "stakeAmount" }),
+              readContract(config, { address: addr, abi: GameLobbyABI, functionName: "maxPlayers" }),
+              readContract(config, { address: addr, abi: GameLobbyABI, functionName: "roundCount" }),
+              readContract(config, { address: addr, abi: GameLobbyABI, functionName: "eliminationPercent" }),
+              readContract(config, { address: addr, abi: GameLobbyABI, functionName: "state" }),
+              readContract(config, { address: addr, abi: GameLobbyABI, functionName: "prizePool" }),
+            ]);
           const players = (await readContract(config, {
-            address: addr,
-            abi: GameLobbyABI,
-            functionName: "getPlayers",
+            address: addr, abi: GameLobbyABI, functionName: "getPlayers",
           })) as `0x${string}`[];
 
           return {
-            address: addr,
-            stakeAmount: stakeAmount as bigint,
-            maxPlayers: Number(maxPlayers),
-            playerCount: players.length,
-            roundCount: Number(roundCount),
-            eliminationPercent: Number(eliminationPercent),
-            state: Number(state),
-            prizePool: prizePool as bigint,
+            address: addr, stakeAmount: stakeAmount as bigint,
+            maxPlayers: Number(maxPlayers), playerCount: players.length,
+            roundCount: Number(roundCount), eliminationPercent: Number(eliminationPercent),
+            state: Number(state), prizePool: prizePool as bigint,
           };
         })
       );
@@ -299,40 +265,47 @@ export default function LobbyPage() {
   if (!isConnected) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-4">
+        <div className="pointer-events-none fixed inset-0 bg-mesh" />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          transition={{ type: "spring", bounce: 0.2 }}
+          className="relative text-center"
         >
-          <CrosshairIcon className="mx-auto mb-4 h-12 w-12 text-primary-500" />
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            <CrosshairIcon className="mx-auto mb-4 h-14 w-14 text-primary-500" />
+          </motion.div>
           <h1 className="mb-2 font-display text-2xl font-bold text-white">
             Connect Your Wallet
           </h1>
-          <p className="mb-6 text-surface-400">
-            Connect to browse lobbies and join games
-          </p>
+          <p className="text-surface-400">Connect to browse lobbies and join games</p>
         </motion.div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="relative min-h-screen">
+      <div className="pointer-events-none fixed inset-0 bg-mesh" />
       <Navbar />
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="mb-8 flex items-center justify-between">
+      <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <motion.h1
-              initial={{ opacity: 0, x: -12 }}
+              initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4 }}
               className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl"
             >
               Game Lobbies
             </motion.h1>
             <motion.p
-              initial={{ opacity: 0, x: -12 }}
+              initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.05 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
               className="mt-1 text-sm text-surface-400"
             >
               {loading
@@ -341,12 +314,13 @@ export default function LobbyPage() {
             </motion.p>
           </div>
           <motion.button
-            initial={{ opacity: 0, x: 12 }}
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.4 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-700/20 transition-colors hover:bg-primary-600"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-primary-600 to-primary-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-700/20 transition-all hover:from-primary-500 hover:to-primary-600"
           >
             <CrosshairIcon className="h-4 w-4" />
             Create Lobby
@@ -357,26 +331,34 @@ export default function LobbyPage() {
           <SkeletonList count={4} />
         ) : lobbies.length === 0 ? (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-surface-800 bg-surface-900 py-20 text-center"
+            className="rounded-2xl border border-surface-800/60 bg-surface-900/40 py-20 text-center backdrop-blur-sm"
           >
-            <TargetIcon className="mx-auto mb-4 h-12 w-12 text-surface-600" />
-            <p className="mb-2 text-lg font-medium text-surface-300">
-              No active lobbies
-            </p>
-            <p className="mb-6 text-sm text-surface-500">
-              Create one to start playing!
-            </p>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 3, repeat: Infinity }}
             >
+              <TargetIcon className="mx-auto mb-4 h-14 w-14 text-surface-600" />
+            </motion.div>
+            <p className="mb-2 text-lg font-medium text-surface-300">No active lobbies</p>
+            <p className="mb-6 text-sm text-surface-500">Create one to start playing!</p>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-primary-600 to-primary-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-700/20 transition-all hover:from-primary-500 hover:to-primary-600"
+            >
+              <FlameIcon className="h-4 w-4" />
               Create Your First Lobby
-            </button>
+            </motion.button>
           </motion.div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid gap-4 sm:grid-cols-2"
+          >
             <AnimatePresence>
               {lobbies.map((lobby) => (
                 <LobbyCard
@@ -387,7 +369,7 @@ export default function LobbyPage() {
                 />
               ))}
             </AnimatePresence>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -397,27 +379,26 @@ export default function LobbyPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md"
             onClick={() => setShowCreate(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: "spring", bounce: 0.2 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", bounce: 0.15 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-2xl"
+              className="w-full max-w-md rounded-2xl border border-surface-800/60 bg-surface-900/80 p-6 shadow-2xl backdrop-blur-2xl"
             >
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="font-display text-xl font-bold text-white">
-                  Create Lobby
-                </h2>
-                <button
+                <h2 className="font-display text-xl font-bold text-white">Create Lobby</h2>
+                <motion.button
+                  whileHover={{ rotate: 90 }}
                   onClick={() => setShowCreate(false)}
                   className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-800 hover:text-surface-300"
                 >
                   <XIcon className="h-5 w-5" />
-                </button>
+                </motion.button>
               </div>
 
               <div className="space-y-4">
@@ -428,56 +409,38 @@ export default function LobbyPage() {
                   <input
                     type="number"
                     value={createForm.stake}
-                    onChange={(e) =>
-                      setCreateForm({ ...createForm, stake: e.target.value })
-                    }
+                    onChange={(e) => setCreateForm({ ...createForm, stake: e.target.value })}
                     step="0.001"
                     min="0.001"
-                    className="w-full rounded-xl border border-surface-800 bg-surface-950 px-4 py-2.5 text-sm text-white placeholder-surface-600 transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
+                    className="w-full rounded-xl border border-surface-800 bg-surface-950/50 px-4 py-2.5 text-sm text-white placeholder-surface-600 backdrop-blur-sm transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
                     placeholder="0.01"
                   />
                 </div>
-
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-surface-300">
                     Max Players
                   </label>
                   <select
                     value={createForm.maxPlayers}
-                    onChange={(e) =>
-                      setCreateForm({
-                        ...createForm,
-                        maxPlayers: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-xl border border-surface-800 bg-surface-950 px-4 py-2.5 text-sm text-white transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
+                    onChange={(e) => setCreateForm({ ...createForm, maxPlayers: e.target.value })}
+                    className="w-full rounded-xl border border-surface-800 bg-surface-950/50 px-4 py-2.5 text-sm text-white backdrop-blur-sm transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
                   >
                     {[5, 10, 25, 50, 100].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
+                      <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
                 </div>
-
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-surface-300">
                     Rounds
                   </label>
                   <select
                     value={createForm.rounds}
-                    onChange={(e) =>
-                      setCreateForm({
-                        ...createForm,
-                        rounds: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-xl border border-surface-800 bg-surface-950 px-4 py-2.5 text-sm text-white transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
+                    onChange={(e) => setCreateForm({ ...createForm, rounds: e.target.value })}
+                    className="w-full rounded-xl border border-surface-800 bg-surface-950/50 px-4 py-2.5 text-sm text-white backdrop-blur-sm transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
                   >
                     {[3, 5, 10].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
+                      <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
                 </div>
@@ -485,19 +448,15 @@ export default function LobbyPage() {
                 <div className="flex gap-3 pt-2">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={handleCreate}
                     disabled={creating}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 py-2.5 font-semibold text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-primary-600 to-primary-700 py-2.5 font-semibold text-white shadow-lg shadow-primary-700/15 transition-all hover:from-primary-500 hover:to-primary-600 disabled:opacity-50"
                   >
                     {creating ? (
                       <motion.div
                         animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white"
                       />
                     ) : (

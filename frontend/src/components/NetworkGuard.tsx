@@ -15,17 +15,18 @@ export function NetworkGuard({ children }: { children: React.ReactNode }) {
 
   if (chainId !== TARGET_CHAIN_ID) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950 p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-mesh" />
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="w-full max-w-md rounded-2xl border border-surface-800 bg-surface-900 p-8 text-center"
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+          className="relative w-full max-w-md rounded-2xl border border-surface-800 bg-surface-900/80 p-8 text-center shadow-2xl backdrop-blur-2xl"
         >
           <motion.div
-            animate={{ rotate: [0, -10, 10, -10, 0] }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-danger/10"
+            animate={{ rotate: [0, -12, 12, -12, 0] }}
+            transition={{ duration: 1, delay: 0.3 }}
+            className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-danger/10"
           >
             <ShieldIcon className="h-8 w-8 text-danger" />
           </motion.div>
@@ -33,20 +34,19 @@ export function NetworkGuard({ children }: { children: React.ReactNode }) {
             Wrong Network
           </h2>
           <p className="mb-6 text-surface-400">
-            Please switch to <strong className="text-white">Arbitrum Sepolia</strong> to use this
+            Switch to{" "}
+            <strong className="text-white">Arbitrum Sepolia</strong> to use this
             application.
           </p>
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={async () => {
               try {
                 await switchChain(config, { chainId: TARGET_CHAIN_ID });
-              } catch {
-                // user rejected
-              }
+              } catch {}
             }}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-700/20 transition-colors hover:bg-primary-600"
           >
             <ShieldIcon className="h-4 w-4" />
             Switch Network

@@ -45,55 +45,19 @@ type GameState =
   | "eliminated"
   | "completed";
 
-function GameStatusBadge({
-  gameState,
-  isEliminated,
-}: {
-  gameState: GameState;
-  isEliminated: boolean;
-}) {
-  const config: Record<
-    GameState,
-    { label: string; color: string; bg: string }
-  > = {
-    waiting: {
-      label: "Waiting",
-      color: "text-warning",
-      bg: "bg-warning/10",
-    },
-    committing: {
-      label: "Committing",
-      color: "text-cyber-400",
-      bg: "bg-cyber-400/10",
-    },
-    revealing: {
-      label: "Revealing",
-      color: "text-primary-400",
-      bg: "bg-primary-700/10",
-    },
-    resolving: {
-      label: "Resolving",
-      color: "text-warning",
-      bg: "bg-warning/10",
-    },
-    eliminated: {
-      label: "Eliminated",
-      color: "text-danger",
-      bg: "bg-danger/10",
-    },
-    completed: {
-      label: "Completed",
-      color: "text-success",
-      bg: "bg-success/10",
-    },
+function GameStatusBadge({ gameState }: { gameState: GameState }) {
+  const config: Record<GameState, { label: string; color: string; bg: string; dot: string }> = {
+    waiting: { label: "Waiting", color: "text-warning", bg: "bg-warning/10", dot: "bg-warning" },
+    committing: { label: "Committing", color: "text-cyber-400", bg: "bg-cyber-500/10", dot: "bg-cyber-400" },
+    revealing: { label: "Revealing", color: "text-primary-400", bg: "bg-primary-500/10", dot: "bg-primary-400" },
+    resolving: { label: "Resolving", color: "text-warning", bg: "bg-warning/10", dot: "bg-warning" },
+    eliminated: { label: "Eliminated", color: "text-danger", bg: "bg-danger/10", dot: "bg-danger" },
+    completed: { label: "Completed", color: "text-success", bg: "bg-success/10", dot: "bg-success" },
   };
-
   const c = config[gameState];
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${c.bg} ${c.color}`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${c.color.replace("text", "bg")}`} />
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${c.bg} ${c.color} backdrop-blur-sm`}>
+      <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${c.dot}`} />
       {c.label}
     </span>
   );
@@ -124,19 +88,13 @@ export default function GamePage() {
   const loadPlayers = useCallback(async () => {
     try {
       const p = (await readContract(config, {
-        address: gameAddress,
-        abi: GameLobbyABI,
-        functionName: "getPlayers",
+        address: gameAddress, abi: GameLobbyABI, functionName: "getPlayers",
       })) as `0x${string}`[];
       setPlayers(p);
-
       const scoreMap: Record<string, number> = {};
       for (const player of p) {
         const s = await readContract(config, {
-          address: gameAddress,
-          abi: GameLobbyABI,
-          functionName: "scores",
-          args: [player],
+          address: gameAddress, abi: GameLobbyABI, functionName: "scores", args: [player],
         });
         scoreMap[player] = Number(s);
       }
@@ -149,35 +107,17 @@ export default function GamePage() {
   const loadGameData = useCallback(async () => {
     try {
       const [state, stake, rCount, pool] = await Promise.all([
-        readContract(config, {
-          address: gameAddress,
-          abi: GameLobbyABI,
-          functionName: "state",
-        }),
-        readContract(config, {
-          address: gameAddress,
-          abi: GameLobbyABI,
-          functionName: "stakeAmount",
-        }),
-        readContract(config, {
-          address: gameAddress,
-          abi: GameLobbyABI,
-          functionName: "roundCount",
-        }),
-        readContract(config, {
-          address: gameAddress,
-          abi: GameLobbyABI,
-          functionName: "prizePool",
-        }),
+        readContract(config, { address: gameAddress, abi: GameLobbyABI, functionName: "state" }),
+        readContract(config, { address: gameAddress, abi: GameLobbyABI, functionName: "stakeAmount" }),
+        readContract(config, { address: gameAddress, abi: GameLobbyABI, functionName: "roundCount" }),
+        readContract(config, { address: gameAddress, abi: GameLobbyABI, functionName: "prizePool" }),
       ]);
       setTotalRounds(Number(rCount));
       setPrizePool(pool as bigint);
       setStakeAmount(stake as bigint);
-
       const stateNum = Number(state);
       if (stateNum === 2) setGameState("completed");
       else if (stateNum === 3) setGameState("waiting");
-
       await loadPlayers();
     } catch (e) {
       console.error("loadGameData failed:", e);
@@ -193,64 +133,60 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!address) return;
-    const unwatchRound = watchContractEvent(config, {
-      address: gameAddress,
-      abi: GameLobbyABI,
-      eventName: "RoundStarted",
-      onLogs(logs) {
-        const log = logs[0] as any;
-        if (log?.args) {
-          setCurrentRound(Number(log.args.roundId));
-          setCommitted(false);
-          setRevealed(false);
-          setGameState("committing");
-          setRoundEndTime(Math.floor(Date.now() / 1000) + 30);
-        }
-      },
-    });
-    const unwatchResolve = watchContractEvent(config, {
-      address: gameAddress,
-      abi: GameLobbyABI,
-      eventName: "RoundResolved",
-      onLogs(logs) {
-        const log = logs[0] as any;
-        if (log?.args) {
-          setResolvedValue(Number(log.args.result));
-          setGameState("resolving");
-        }
-      },
-    });
-    const unwatchElim = watchContractEvent(config, {
-      address: gameAddress,
-      abi: GameLobbyABI,
-      eventName: "PlayerEliminated",
-      onLogs(logs) {
-        const log = logs[0] as any;
-        if (log?.args?.player === address) {
-          setIsEliminated(true);
-          setGameState("eliminated");
-        }
-        loadPlayers();
-      },
-    });
-    const unwatchComplete = watchContractEvent(config, {
-      address: gameAddress,
-      abi: GameLobbyABI,
-      eventName: "GameCompleted",
-      onLogs(logs) {
-        const log = logs[0] as any;
-        if (log?.args) {
-          setWinner(log.args.winner as `0x${string}`);
-          setGameState("completed");
-        }
-      },
-    });
-    return () => {
-      unwatchRound();
-      unwatchResolve();
-      unwatchElim();
-      unwatchComplete();
-    };
+    const unsubs: (() => void)[] = [];
+
+    unsubs.push(
+      watchContractEvent(config, {
+        address: gameAddress, abi: GameLobbyABI, eventName: "RoundStarted",
+        onLogs(logs) {
+          const log = logs[0] as any;
+          if (log?.args) {
+            setCurrentRound(Number(log.args.roundId));
+            setCommitted(false); setRevealed(false);
+            setGameState("committing");
+            setRoundEndTime(Math.floor(Date.now() / 1000) + 30);
+          }
+        },
+      })
+    );
+    unsubs.push(
+      watchContractEvent(config, {
+        address: gameAddress, abi: GameLobbyABI, eventName: "RoundResolved",
+        onLogs(logs) {
+          const log = logs[0] as any;
+          if (log?.args) {
+            setResolvedValue(Number(log.args.result));
+            setGameState("resolving");
+          }
+        },
+      })
+    );
+    unsubs.push(
+      watchContractEvent(config, {
+        address: gameAddress, abi: GameLobbyABI, eventName: "PlayerEliminated",
+        onLogs(logs) {
+          const log = logs[0] as any;
+          if (log?.args?.player === address) {
+            setIsEliminated(true);
+            setGameState("eliminated");
+          }
+          loadPlayers();
+        },
+      })
+    );
+    unsubs.push(
+      watchContractEvent(config, {
+        address: gameAddress, abi: GameLobbyABI, eventName: "GameCompleted",
+        onLogs(logs) {
+          const log = logs[0] as any;
+          if (log?.args) {
+            setWinner(log.args.winner as `0x${string}`);
+            setGameState("completed");
+          }
+        },
+      })
+    );
+    return () => unsubs.forEach((u) => u());
   }, [gameAddress, address, loadPlayers]);
 
   async function handlePredict(direction: "yes" | "no") {
@@ -258,27 +194,18 @@ export default function GamePage() {
     const salt = generateSalt();
     const saltWithPrefix = `0x${salt}` as `0x${string}`;
     const targetVal = 100n;
-
     storeSalt(gameAddress, currentRound, address, salt);
-    storeValue(
-      gameAddress,
-      currentRound,
-      address,
-      direction === "yes" ? "1" : "0"
-    );
-
+    storeValue(gameAddress, currentRound, address, direction === "yes" ? "1" : "0");
     const commitment = computeCommitment(targetVal, saltWithPrefix, address);
     try {
       showToast("Locking in your prediction...", "pending");
       const hash = await writeContract(config, {
-        address: gameAddress,
-        abi: GameLobbyABI,
-        functionName: "submitCommitment",
-        args: [commitment],
+        address: gameAddress, abi: GameLobbyABI,
+        functionName: "submitCommitment", args: [commitment],
       });
       await waitForTransactionReceipt(config, { hash });
       setCommitted(true);
-      showToast("Prediction locked! Now reveal it.", "success");
+      showToast("Prediction locked! 🔒", "success");
     } catch (e) {
       showToast("Failed to submit prediction", "error");
       console.error("commit failed:", e);
@@ -297,55 +224,48 @@ export default function GamePage() {
     try {
       showToast("Revealing prediction...", "pending");
       const hash = await writeContract(config, {
-        address: gameAddress,
-        abi: GameLobbyABI,
+        address: gameAddress, abi: GameLobbyABI,
         functionName: "revealPrediction",
         args: [BigInt(val), `0x${salt}` as `0x${string}`],
       });
       await waitForTransactionReceipt(config, { hash });
       setRevealed(true);
-      showToast("Revealed successfully!", "success");
+      showToast("Revealed! ✅", "success");
     } catch (e) {
-      showToast("Failed to reveal prediction", "error");
+      showToast("Failed to reveal", "error");
       console.error("reveal failed:", e);
     } finally {
       setRevealing(false);
     }
   }
 
-  const isWinner =
-    address && winner && address.toLowerCase() === winner.toLowerCase();
-  const sortedPlayers = [...players].sort(
-    (a, b) => (scores[b] || 0) - (scores[a] || 0)
-  );
+  const isWinner = address && winner && address.toLowerCase() === winner.toLowerCase();
+  const sortedPlayers = [...players].sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
   const poolEth = Number(prizePool) / 1e18;
   const stakeEth = Number(stakeAmount) / 1e18;
-  const myRank = address
-    ? sortedPlayers.findIndex(
-        (p) => p.toLowerCase() === address.toLowerCase()
-      ) + 1
-    : 0;
-  const aliveCount = sortedPlayers.filter(
-    (p) => !isEliminated || p.toLowerCase() !== address?.toLowerCase()
-  ).length;
+  const myRank = address ? sortedPlayers.findIndex((p) => p.toLowerCase() === address.toLowerCase()) + 1 : 0;
+  const aliveCount = sortedPlayers.length;
 
   return (
-    <main className="min-h-screen">
+    <main className="relative min-h-screen">
+      <div className="pointer-events-none fixed inset-0 bg-mesh" />
       <Navbar />
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <div className="relative mx-auto max-w-5xl px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <GameStatusBadge
-              gameState={gameState}
-              isEliminated={isEliminated}
-            />
+            <GameStatusBadge gameState={gameState} />
             {currentRound > 0 && (
               <span className="font-mono text-sm text-surface-500">
-                Round {currentRound}/{totalRounds}
+                R{currentRound}/{totalRounds}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {address && myRank > 0 && gameState !== "waiting" && (
+              <span className="rounded-lg bg-primary-700/10 px-2.5 py-1 font-mono text-xs text-primary-400">
+                #{myRank}
+              </span>
+            )}
             <span className="font-mono text-xs text-surface-600">
               {gameAddress.slice(0, 6)}...{gameAddress.slice(-4)}
             </span>
@@ -359,28 +279,31 @@ export default function GamePage() {
             {gameState === "waiting" && (
               <motion.div
                 key="waiting"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                className="rounded-2xl border border-surface-800 bg-surface-900 py-16 text-center"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="rounded-2xl border border-surface-800/60 bg-surface-900/40 py-16 text-center backdrop-blur-sm"
               >
-                <ClockIcon className="mx-auto mb-4 h-12 w-12 text-surface-600" />
-                <h2 className="mb-2 font-display text-2xl font-bold text-white">
-                  Waiting for game to start
-                </h2>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-500/10"
+                >
+                  <ClockIcon className="h-7 w-7 text-primary-400" />
+                </motion.div>
+                <h2 className="mb-2 font-display text-2xl font-bold text-white">Waiting for game to start</h2>
                 <p className="mb-6 text-surface-400">
-                  {players.length} player{players.length !== 1 ? "s" : ""} joined
-                  &middot; {stakeEth.toFixed(3)} ETH stake
+                  {players.length} player{players.length !== 1 ? "s" : ""} joined &middot; {stakeEth.toFixed(3)} ETH stake
                 </p>
                 <div className="mx-auto max-w-xs">
                   <div className="flex items-center justify-between text-xs text-surface-500">
                     <span>Players</span>
                     <span>{players.length}</span>
                   </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-surface-800">
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-800">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
+                      animate={{ width: `${Math.min(100, players.length * 10)}%` }}
                       className="h-full rounded-full bg-gradient-to-r from-primary-700 to-cyber-400"
                     />
                   </div>
@@ -391,25 +314,26 @@ export default function GamePage() {
             {(gameState === "committing" || gameState === "revealing") && (
               <motion.div
                 key="playing"
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
+                exit={{ opacity: 0, y: -20 }}
                 className="mb-6"
               >
-                <div className="mb-6 rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center">
-                  <p className="mb-1 text-xs font-medium text-cyber-400">
-                    Current Question
-                  </p>
+                <div className="mb-6 overflow-hidden rounded-2xl border border-surface-800/60 bg-surface-900/40 p-6 text-center backdrop-blur-sm sm:p-8">
+                  <div className="mb-4 flex items-center justify-center gap-2">
+                    <span className="rounded-full bg-cyber-500/10 px-3 py-1 text-xs font-medium text-cyber-400">
+                      ROUND {currentRound}
+                    </span>
+                    <span className="text-xs text-surface-500">of {totalRounds}</span>
+                  </div>
                   <h2 className="mb-2 font-display text-xl font-bold text-white sm:text-2xl">
                     Will BTC be above $67,500 in 5 minutes?
                   </h2>
-                  <p className="mb-4 text-sm text-surface-400">
-                    Current BTC: $67,320{" "}
+                  <p className="mb-5 text-sm text-surface-400">
+                    Current BTC: <span className="font-mono text-surface-300">$67,320</span>{" "}
                     <span className="text-success">▲ +0.3%</span>
                   </p>
-                  {roundEndTime > 0 && (
-                    <CountdownTimer targetTimestamp={roundEndTime} />
-                  )}
+                  {roundEndTime > 0 && <CountdownTimer targetTimestamp={roundEndTime} />}
                 </div>
 
                 {gameState === "committing" && !committed && (
@@ -422,35 +346,28 @@ export default function GamePage() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mb-6 rounded-2xl border border-success/30 bg-success/5 p-8 text-center"
+                    className="mb-6 overflow-hidden rounded-2xl border border-success/20 bg-success/5 p-8 text-center backdrop-blur-sm"
                   >
                     <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
+                      animate={{ scale: [1, 1.15, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-success/10"
                     >
-                      <CheckIcon className="mx-auto mb-3 h-10 w-10 text-success" />
+                      <CheckIcon className="h-7 w-7 text-success" />
                     </motion.div>
-                    <p className="mb-1 font-display text-xl font-bold text-success">
-                      Prediction Locked!
-                    </p>
-                    <p className="mb-6 text-sm text-surface-400">
-                      Now reveal to register your answer on-chain
-                    </p>
+                    <p className="mb-1 font-display text-xl font-bold text-success">Prediction Locked!</p>
+                    <p className="mb-6 text-sm text-surface-400">Now reveal to register your answer on-chain</p>
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
                       onClick={handleReveal}
                       disabled={revealing}
-                      className="inline-flex items-center gap-2 rounded-xl bg-primary-700 px-8 py-3 font-semibold text-white shadow-lg shadow-primary-700/20 transition-colors hover:bg-primary-600"
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-primary-600 to-primary-700 px-8 py-3 font-semibold text-white shadow-lg shadow-primary-700/20 transition-all hover:from-primary-500 hover:to-primary-600"
                     >
                       {revealing ? (
                         <motion.div
                           animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                           className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white"
                         />
                       ) : (
@@ -467,11 +384,11 @@ export default function GamePage() {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-6 rounded-2xl border border-success/20 bg-success/5 p-4 text-center"
+                    className="mb-6 rounded-xl border border-success/20 bg-success/5 p-4 text-center backdrop-blur-sm"
                   >
                     <p className="flex items-center justify-center gap-2 font-semibold text-success">
                       <CheckIcon className="h-4 w-4" />
-                      Revealed successfully &mdash; waiting for round to end
+                      Revealed &mdash; waiting for round to end
                     </p>
                   </motion.div>
                 )}
@@ -484,21 +401,16 @@ export default function GamePage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="rounded-2xl border border-surface-800 bg-surface-900 py-16 text-center"
+                className="rounded-2xl border border-surface-800/60 bg-surface-900/40 py-16 text-center backdrop-blur-sm"
               >
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                   className="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-surface-700 border-t-cyber-400"
                 />
-                <h2 className="mb-2 font-display text-xl font-bold text-white">
-                  Oracle Resolving...
-                </h2>
+                <h2 className="mb-2 font-display text-xl font-bold text-white">Oracle Resolving...</h2>
                 <p className="text-surface-400">
-                  BTC final: $
-                  {resolvedValue > 0
-                    ? (resolvedValue / 1e8).toLocaleString()
-                    : "..."}
+                  BTC final: ${resolvedValue > 0 ? (resolvedValue / 1e8).toLocaleString() : "..."}
                 </p>
               </motion.div>
             )}
@@ -511,31 +423,23 @@ export default function GamePage() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="mb-6"
               >
-                <div className="mb-4 rounded-2xl border border-danger/30 bg-danger/5 py-12 text-center">
+                <div className="mb-4 overflow-hidden rounded-2xl border border-danger/20 bg-danger/5 py-12 text-center backdrop-blur-sm">
                   <motion.div
-                    animate={{
-                      y: [0, -8, 0],
-                      rotate: [0, -5, 5, 0],
-                    }}
+                    animate={{ y: [0, -8, 0], rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 1.5 }}
+                    className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-danger/10"
                   >
-                    <SkullIcon className="mx-auto mb-4 h-16 w-16 text-danger" />
+                    <SkullIcon className="h-10 w-10 text-danger" />
                   </motion.div>
-                  <h2 className="mb-2 font-display text-3xl font-bold text-danger">
-                    ELIMINATED
-                  </h2>
+                  <h2 className="mb-2 font-display text-3xl font-bold text-danger">ELIMINATED</h2>
                   <p className="mb-1 text-surface-300">
-                    You survived {currentRound - 1} round
-                    {currentRound - 1 !== 1 ? "s" : ""}
+                    Survived {currentRound - 1} round{currentRound - 1 !== 1 ? "s" : ""}
                   </p>
-                  <p className="text-sm text-surface-500">
-                    Spectating — watching remaining rounds play out
-                  </p>
+                  <p className="text-sm text-surface-500">Spectating remaining rounds</p>
                 </div>
-                <div className="rounded-xl border border-surface-800 bg-surface-900 p-4">
-                  <p className="text-center text-sm text-surface-400">
-                    Round {currentRound}/{totalRounds} &middot;{" "}
-                    {aliveCount} player{aliveCount !== 1 ? "s" : ""} remaining
+                <div className="rounded-xl border border-surface-800/60 bg-surface-900/40 p-4 text-center backdrop-blur-sm">
+                  <p className="text-sm text-surface-400">
+                    Round {currentRound}/{totalRounds} &middot; {aliveCount} player{aliveCount !== 1 ? "s" : ""} remaining
                   </p>
                 </div>
               </motion.div>
@@ -549,42 +453,36 @@ export default function GamePage() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="mb-6"
               >
-                <div className="mb-4 rounded-2xl border border-warning/30 bg-gradient-to-b from-warning/5 to-transparent py-12 text-center">
+                <div className="mb-4 overflow-hidden rounded-2xl border border-warning/20 bg-gradient-to-b from-warning/5 to-transparent py-12 text-center backdrop-blur-sm">
                   <motion.div
-                    animate={{ y: [0, -6, 0] }}
+                    animate={{ y: [0, -8, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="mx-auto mb-4"
+                    className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-warning/10"
                   >
-                    <CrownIcon className="mx-auto h-16 w-16 text-warning" />
+                    <CrownIcon className="h-10 w-10 text-warning" />
                   </motion.div>
                   <h2 className="mb-2 font-display text-3xl font-bold text-white">
                     {isWinner ? "YOU WIN!" : "Game Over"}
                   </h2>
                   <p className="mb-1 text-lg text-surface-300">
-                    Prize Pool:{" "}
-                    <span className="font-bold text-warning">
-                      {poolEth.toFixed(4)} ETH
-                    </span>
+                    Prize Pool: <span className="font-bold text-gradient-warm">{poolEth.toFixed(4)} ETH</span>
                   </p>
                   {isWinner && (
                     <p className="text-sm text-surface-400">
                       You take home{" "}
-                      <span className="font-bold text-success">
-                        {(poolEth * 0.7).toFixed(4)} ETH
-                      </span>
+                      <span className="font-bold text-gradient-success">{(poolEth * 0.7).toFixed(4)} ETH</span>
                     </p>
                   )}
                 </div>
 
-                <div className="mb-6 rounded-2xl border border-surface-800 bg-surface-900 p-4">
+                <div className="mb-6 overflow-hidden rounded-2xl border border-surface-800/60 bg-surface-900/40 p-4 backdrop-blur-sm">
                   <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-bold text-white">
                     <TrophyIcon className="h-5 w-5 text-primary-400" />
                     Final Standings
                   </h3>
                   <div className="space-y-2">
                     {sortedPlayers.slice(0, 5).map((p, i) => {
-                      const isYou =
-                        p.toLowerCase() === address?.toLowerCase();
+                      const isYou = p.toLowerCase() === address?.toLowerCase();
                       const medals = ["🥇", "🥈", "🥉"];
                       return (
                         <div
@@ -602,9 +500,7 @@ export default function GamePage() {
                             <span className="font-mono text-sm">
                               {p.slice(0, 6)}...{p.slice(-4)}
                               {isYou && (
-                                <span className="ml-1.5 text-xs text-primary-400">
-                                  (YOU)
-                                </span>
+                                <span className="ml-1.5 text-xs text-primary-400">(YOU)</span>
                               )}
                             </span>
                           </div>
@@ -635,7 +531,7 @@ export default function GamePage() {
         <div className="mt-8">
           <button
             onClick={() => setShowLeaderboard(!showLeaderboard)}
-            className="mb-4 flex w-full items-center justify-between rounded-xl bg-surface-900 px-4 py-3 text-left transition-colors hover:bg-surface-800"
+            className="mb-4 flex w-full items-center justify-between rounded-xl border border-surface-800/60 bg-surface-900/40 px-4 py-3 text-left backdrop-blur-sm transition-colors hover:bg-surface-800/50"
           >
             <span className="flex items-center gap-2 font-display font-bold text-white">
               <TrophyIcon className="h-4 w-4 text-primary-400" />
@@ -658,18 +554,14 @@ export default function GamePage() {
                 {loading ? (
                   <SkeletonLeaderboard />
                 ) : sortedPlayers.length === 0 ? (
-                  <div className="rounded-xl bg-surface-900 py-8 text-center">
+                  <div className="rounded-xl bg-surface-900/40 py-8 text-center backdrop-blur-sm">
                     <UsersIcon className="mx-auto mb-2 h-8 w-8 text-surface-600" />
                     <p className="text-sm text-surface-500">No players yet</p>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     {sortedPlayers.map((p, i) => {
-                      const isYou =
-                        p.toLowerCase() === address?.toLowerCase();
-                      const isElim =
-                        gameState === "eliminated" &&
-                        p.toLowerCase() === address?.toLowerCase();
+                      const isYou = p.toLowerCase() === address?.toLowerCase();
                       return (
                         <motion.div
                           key={p}
@@ -679,17 +571,11 @@ export default function GamePage() {
                           className={`flex items-center justify-between rounded-xl px-4 py-2.5 ${
                             isYou
                               ? "border border-primary-700/20 bg-primary-700/10"
-                              : "bg-surface-900/50"
-                          } ${isElim ? "opacity-60" : ""}`}
+                              : "bg-surface-900/30"
+                          }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span
-                              className={`w-5 text-center text-xs font-bold ${
-                                i < 3
-                                  ? "text-primary-400"
-                                  : "text-surface-600"
-                              }`}
-                            >
+                            <span className={`w-5 text-center text-xs font-bold ${i < 3 ? "text-primary-400" : "text-surface-600"}`}>
                               #{i + 1}
                             </span>
                             <span className="font-mono text-sm text-surface-300">
@@ -701,11 +587,9 @@ export default function GamePage() {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-sm font-medium text-surface-400">
-                              {scores[p] || 0} pts
-                            </span>
-                          </div>
+                          <span className="font-mono text-sm font-medium text-surface-400">
+                            {scores[p] || 0} pts
+                          </span>
                         </motion.div>
                       );
                     })}

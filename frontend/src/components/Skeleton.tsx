@@ -15,7 +15,7 @@ export function SkeletonCard() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="rounded-xl border border-surface-800 bg-surface-900 p-5"
+      className="rounded-2xl border border-surface-800/60 bg-surface-900/30 p-5 backdrop-blur-sm"
     >
       <ShimmerBlock className="mb-3 h-4 w-3/4" />
       <ShimmerBlock className="mb-2 h-3 w-1/2" />
@@ -34,7 +34,7 @@ export function SkeletonList({ count = 3 }: { count?: number }) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.08 }}
-          className="rounded-xl border border-surface-800 bg-surface-900 p-5"
+          className="rounded-2xl border border-surface-800/60 bg-surface-900/30 p-5 backdrop-blur-sm"
         >
           <div className="flex items-center justify-between">
             <div className="flex-1 space-y-2">
@@ -62,7 +62,7 @@ export function SkeletonLeaderboard({ count = 5 }: { count?: number }) {
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.06 }}
-          className="flex items-center justify-between rounded-lg bg-surface-900 p-3"
+          className="flex items-center justify-between rounded-xl bg-surface-900/30 p-3 backdrop-blur-sm"
         >
           <div className="flex items-center gap-2">
             <ShimmerBlock className="h-4 w-6" />
@@ -88,10 +88,10 @@ export function SkeletonGameRound() {
         <ShimmerBlock className="mx-auto h-4 w-48" />
       </div>
       <div className="flex justify-center gap-4">
-        <ShimmerBlock className="h-16 w-32 rounded-xl" />
-        <ShimmerBlock className="h-16 w-32 rounded-xl" />
+        <ShimmerBlock className="h-16 w-32 rounded-2xl" />
+        <ShimmerBlock className="h-16 w-32 rounded-2xl" />
       </div>
-      <ShimmerBlock className="h-48 rounded-xl" />
+      <ShimmerBlock className="h-48 rounded-2xl" />
     </motion.div>
   );
 }
@@ -102,7 +102,7 @@ export function SkeletonProfile() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="rounded-xl border border-surface-800 bg-surface-900 p-6"
+        className="rounded-2xl border border-surface-800/60 bg-surface-900/30 p-6 backdrop-blur-sm"
       >
         <ShimmerBlock className="mb-4 h-6 w-24" />
         <ShimmerBlock className="mb-4 h-4 w-64" />

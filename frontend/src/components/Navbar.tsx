@@ -18,30 +18,31 @@ export function Navbar() {
     <motion.nav
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="sticky top-0 z-40 border-b border-surface-800 bg-surface-950/80 backdrop-blur-xl"
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="sticky top-4 z-40 mx-4 mb-4 rounded-2xl border border-surface-800/60 bg-surface-950/70 backdrop-blur-2xl sm:mx-6"
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 group">
+      <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-5">
+        <Link href="/" className="group flex items-center gap-2">
           <motion.div
-            whileHover={{ rotate: 180 }}
-            transition={{ duration: 0.4 }}
+            whileHover={{ rotate: 180, scale: 1.1 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-700/20"
           >
-            <CrosshairIcon className="h-6 w-6 text-primary-500" />
+            <CrosshairIcon className="h-4 w-4 text-primary-400" />
           </motion.div>
-          <span className="font-display text-xl font-bold tracking-tight text-white">
+          <span className="font-display text-lg font-bold tracking-tight text-white">
             PMBR
           </span>
         </Link>
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-3">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`relative rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive
                     ? "text-white"
                     : "text-surface-400 hover:text-surface-200"
@@ -52,13 +53,13 @@ export function Navbar() {
                   <motion.div
                     layoutId="nav-indicator"
                     className="absolute inset-0 rounded-lg bg-primary-700/20"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                   />
                 )}
               </Link>
             );
           })}
-          <div className="ml-2">
+          <div className="ml-1">
             <ConnectButton
               accountStatus={{
                 smallScreen: "avatar",
