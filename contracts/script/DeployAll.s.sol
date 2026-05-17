@@ -13,10 +13,7 @@ contract DeployAll is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address feeRecipient = vm.envAddress("FEE_RECIPIENT");
 
-        // Arbitrum Sepolia Chainlink feeds
-        // BTC/USD: 0x56a43EB56Da12C0dc1D972ACb089c06a5dEF8e69
-        // ETH/USD: 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165
-        address btcFeed = 0x56a43EB56Da12C0dc1D972ACb089c06a5dEF8e69;
+        address btcFeed = vm.envAddress("BTC_USD_FEED");
 
         vm.startBroadcast(deployerPrivateKey);
 

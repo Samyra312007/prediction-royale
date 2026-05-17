@@ -274,7 +274,7 @@ export default function GamePage() {
         functionName: "getLatestPrice",
       }) as [bigint, bigint];
       const currentPrice = raw[0];
-      const premium = currentPrice / 100n;
+      const premium = (currentPrice * 5n) / 10000n;
       const predictedPrice = direction === "yes"
         ? currentPrice + premium
         : currentPrice - premium;

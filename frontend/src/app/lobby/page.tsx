@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { readContract, writeContract, waitForTransactionReceipt } from "wagmi/actions";
 import { config } from "../wagmi";
-import { CONTRACT_ADDRESSES, GameFactoryABI, GameLobbyABI } from "@/lib/contracts";
+import { CONTRACT_ADDRESSES, GameFactoryABI, GameLobbyABI, CHAINLINK_FEEDS } from "@/lib/contracts";
 import { Navbar } from "@/components/Navbar";
 import { SkeletonList } from "@/components/Skeleton";
 import { showToast } from "@/components/Toast";
@@ -225,7 +225,7 @@ export default function LobbyPage() {
           BigInt(createForm.maxPlayers),
           BigInt(createForm.rounds),
           BigInt(createForm.elimPercent),
-          "0x56a43EB56Da12C0dc1D972ACb089c06a5dEF8e69",
+          CHAINLINK_FEEDS.btcUsd,
         ],
       });
       await waitForTransactionReceipt(config, { hash });

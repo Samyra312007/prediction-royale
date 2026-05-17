@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../src/GameFactory.sol";
 import "../src/ScoreEngine.sol";
 import "../src/ParticipationNFT.sol";
+import "../src/PrizeVault.sol";
 import "../src/mocks/MockOracle.sol";
 
 contract GameFactoryTest is Test {

@@ -147,6 +147,8 @@ contract GameLobby is ReentrancyGuard {
     }
 
     function _startGame() internal {
+        int256 price = _fetchPrice();
+        require(price != 0, "Oracle unavailable");
         state = GameState.ACTIVE;
         emit GameStarted(block.timestamp);
         _startRound();
@@ -252,10 +254,10 @@ contract GameLobby is ReentrancyGuard {
         address[] memory sorted = scoreEngine.rankPlayers(activePlayers, scoreValues);
 
         uint256 eliminated;
-        for (uint256 i = sorted.length; i > 0 && eliminated < toEliminate; i--) {
-            if (!isEliminated[sorted[i - 1]]) {
-                isEliminated[sorted[i - 1]] = true;
-                emit PlayerEliminated(sorted[i - 1], currentRound);
+        for (uint256 i = 0; i < sorted.length && eliminated < toEliminate; i++) {
+            if (!isEliminated[sorted[i]]) {
+                isEliminated[sorted[i]] = true;
+                emit PlayerEliminated(sorted[i], currentRound);
                 eliminated++;
             }
         }
@@ -273,6 +275,7 @@ contract GameLobby is ReentrancyGuard {
     }
 
     function _completeGame() internal {
+        require(address(prizeVault) != address(0), "PrizeVault not set");
         state = GameState.COMPLETED;
 
         uint256[] memory scoreValues = new uint256[](activePlayers.length);
@@ -385,5 +388,7 @@ contract GameLobby is ReentrancyGuard {
         return activePlayers;
     }
 
-    receive() external payable {}
+    receive() external payable {
+        require(msg.sender == address(prizeVault), "Direct ETH not accepted");
+    }
 }

@@ -6,12 +6,14 @@ import "../src/GameFactory.sol";
 import "../src/GameLobby.sol";
 import "../src/ScoreEngine.sol";
 import "../src/ParticipationNFT.sol";
+import "../src/PrizeVault.sol";
 import "../src/mocks/MockOracle.sol";
 import "../src/OracleAdapter.sol";
 
 contract GameLobbyTest is Test {
     GameFactory factory;
     GameLobby lobby;
+    PrizeVault vault;
     MockOracle mockOracle;
     OracleAdapter oracleAdapter;
     ScoreEngine scoreEngine;
@@ -33,6 +35,7 @@ contract GameLobbyTest is Test {
         oracleAdapter = new OracleAdapter(address(mockOracle));
         address gameAddr = factory.createGame(0.01 ether, 5, 3, 20, address(oracleAdapter));
         lobby = GameLobby(payable(gameAddr));
+        vault = PrizeVault(payable(factory.gameVaults(address(lobby))));
     }
 
     function test_JoinGame_Success() public {
@@ -130,5 +133,8 @@ contract GameLobbyTest is Test {
     function _verifyPayouts() internal {
         assertTrue(lobby.state() == GameLobby.GameState.COMPLETED);
         assertTrue(lobby.winner() != address(0));
+        assertTrue(address(vault) != address(0), "PrizeVault not set");
+        assertTrue(vault.pendingPayouts(lobby.winner()) > 0, "Winner has pending payout");
+        assertTrue(lobby.prizePool() >= vault.pendingPayouts(lobby.winner()), "Payout <= prizePool");
     }
 }

@@ -9,24 +9,10 @@ const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANO
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function upsertPlayer(walletAddress: string) {
-  const { data: existing } = await supabase
+  const { data } = await supabase
     .from("players")
-    .select("id, total_games")
-    .eq("wallet_address", walletAddress)
+    .upsert({ wallet_address: walletAddress, last_active: new Date().toISOString() }, { onConflict: "wallet_address", ignoreDuplicates: false })
+    .select("id")
     .single();
-
-  if (existing) {
-    await supabase
-      .from("players")
-      .update({ last_active: new Date().toISOString() })
-      .eq("wallet_address", walletAddress);
-    return existing.id;
-  } else {
-    const { data } = await supabase
-      .from("players")
-      .insert({ wallet_address: walletAddress })
-      .select("id")
-      .single();
-    return data?.id;
-  }
+  return data?.id;
 }

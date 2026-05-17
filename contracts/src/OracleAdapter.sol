@@ -21,9 +21,7 @@ contract OracleAdapter {
     }
 
     function getPriceAt(uint256) external view returns (int256) {
-        (, int256 price, , , ) = priceFeed.latestRoundData();
-        require(price > 0, "Invalid price");
-        return price;
+        revert("Historical lookup not supported");
     }
 
     function decimals() external view returns (uint8) {

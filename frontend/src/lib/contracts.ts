@@ -1,8 +1,14 @@
 export const CHAIN_ID = 421614;
 
+function requireEnv(key: string): `0x${string}` {
+  const val = process.env[key];
+  if (!val) throw new Error(`Missing required env var: ${key}`);
+  return val as `0x${string}`;
+}
+
 export const CONTRACT_ADDRESSES = {
-  gameFactory: (process.env.NEXT_PUBLIC_GAME_FACTORY_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`,
-  oracleAdapter: (process.env.NEXT_PUBLIC_ORACLE_ADAPTER || "0x7e691D4CD5C4005F3681aB31C2584f4Ba5911310") as `0x${string}`,
+  gameFactory: requireEnv("NEXT_PUBLIC_GAME_FACTORY_ADDRESS"),
+  oracleAdapter: requireEnv("NEXT_PUBLIC_ORACLE_ADAPTER"),
 } as const;
 
 export const CHAINLINK_FEEDS = {

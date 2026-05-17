@@ -6,12 +6,14 @@ import "../src/GameFactory.sol";
 import "../src/GameLobby.sol";
 import "../src/ScoreEngine.sol";
 import "../src/ParticipationNFT.sol";
+import "../src/PrizeVault.sol";
 import "../src/mocks/MockOracle.sol";
 import "../src/OracleAdapter.sol";
 
 contract EdgeCasesTest is Test {
     GameFactory factory;
     GameLobby lobby;
+    PrizeVault vault;
     ScoreEngine scoreEngine;
     ParticipationNFT nft;
     MockOracle mockOracle;
@@ -32,6 +34,7 @@ contract EdgeCasesTest is Test {
         oracleAdapter = new OracleAdapter(address(mockOracle));
         address gameAddr = factory.createGame(0.01 ether, 5, 3, 20, address(oracleAdapter));
         lobby = GameLobby(payable(gameAddr));
+        vault = PrizeVault(payable(factory.gameVaults(address(lobby))));
     }
 
     function _join(uint256 count) internal {
@@ -225,6 +228,8 @@ contract EdgeCasesTest is Test {
         _playOneRound();
         assertEq(uint256(lobby.state()), uint256(GameLobby.GameState.COMPLETED), "Should complete with 1 winner");
         assertTrue(lobby.winner() != address(0), "Winner should be set");
+        assertTrue(address(vault) != address(0), "PrizeVault not set");
+        assertTrue(vault.pendingPayouts(lobby.winner()) > 0, "Winner payout allocated");
     }
 
     function _playOneRound() internal {

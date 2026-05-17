@@ -47,7 +47,7 @@ export function PriceChart({ data }: PriceChartProps) {
             <YAxis
               domain={["auto", "auto"]}
               tick={{ fill: "#64748b", fontSize: 10 }}
-              tickFormatter={(v: number) => `$${(v / 1e8).toFixed(0)}`}
+              tickFormatter={(v: number) => `$${(v).toFixed(0)}`}
               axisLine={false} tickLine={false} width={60}
             />
             <Tooltip
@@ -59,7 +59,7 @@ export function PriceChart({ data }: PriceChartProps) {
                 backdropFilter: "blur(12px)",
               }}
               labelStyle={{ color: "#94a3b8" }}
-              formatter={(value: any) => [`$${(Number(value) / 1e8).toFixed(2)}`, "BTC/USD"]}
+              formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "BTC/USD"]}
             />
             <defs>
               <linearGradient id="priceGlow" x1="0" y1="0" x2="0" y2="1">

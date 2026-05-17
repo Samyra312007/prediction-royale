@@ -42,17 +42,7 @@ oracleRouter.get("/history/:feed", async (req: Request, res: Response) => {
       price: Number(p.price?.price || p.price) / 1e8,
     }));
     if (prices.length === 0) {
-      const latest = await fetch(
-        `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${pythId}`
-      );
-      const latestData = await latest.json();
-      const latestPrice = Number(latestData.parsed?.[0]?.price?.price) / 1e8 || 67000;
-      for (let i = 0; i < 20; i++) {
-        prices.push({
-          timestamp: Date.now() - (19 - i) * 15000,
-          price: latestPrice + (Math.random() - 0.5) * (latestPrice * 0.002),
-        });
-      }
+      return res.json([]);
     }
     res.json(prices.slice(-20));
   } catch (e: any) {

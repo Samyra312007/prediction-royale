@@ -28,7 +28,7 @@ contract PrizeVault is ReentrancyGuard {
         linkedGame = _linkedGame;
     }
 
-    function deposit() external payable {
+    function deposit() external payable onlyLinkedGame {
         totalPoolAmount += msg.value;
         emit Deposited(msg.sender, msg.value);
     }

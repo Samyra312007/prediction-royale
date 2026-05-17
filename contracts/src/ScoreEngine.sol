@@ -14,7 +14,7 @@ contract ScoreEngine {
         if (baseScore > 100) baseScore = 0;
         uint256 timeBonus = 0;
         if (roundDeadline > submissionTime) {
-            timeBonus = ((roundDeadline - submissionTime) * 10) / (roundDeadline - submissionTime + roundDeadline);
+            timeBonus = ((roundDeadline - submissionTime) * 10) / (roundDeadline - submissionTime + 1 days);
         }
         return baseScore + timeBonus;
     }

@@ -19,6 +19,10 @@ contract GameFactory is Ownable, ReentrancyGuard {
     mapping(address => uint256[]) private playerGames;
 
     event GameCreated(uint256 indexed gameId, address gameAddress, address creator);
+    event ProtocolFeeSet(uint256 oldFee, uint256 newFee);
+    event FeeRecipientSet(address oldRecipient, address newRecipient);
+    event ScoreEngineSet(address oldEngine, address newEngine);
+    event ParticipationNFTSet(address oldNFT, address newNFT);
 
     constructor(address _feeRecipient, address _scoreEngine, address _participationNFT) Ownable(msg.sender) {
         feeRecipient = _feeRecipient;
@@ -28,10 +32,12 @@ contract GameFactory is Ownable, ReentrancyGuard {
     }
 
     function setScoreEngine(address _scoreEngine) external onlyOwner {
+        emit ScoreEngineSet(scoreEngine, _scoreEngine);
         scoreEngine = _scoreEngine;
     }
 
     function setParticipationNFT(address _participationNFT) external onlyOwner {
+        emit ParticipationNFTSet(participationNFT, _participationNFT);
         participationNFT = _participationNFT;
     }
 
@@ -62,7 +68,7 @@ contract GameFactory is Ownable, ReentrancyGuard {
         PrizeVault vault = new PrizeVault(address(this), address(lobby));
         gameVaults[address(lobby)] = address(vault);
         lobby.setPrizeVault(address(vault));
-        ParticipationNFT(IGameFactory(address(this)).participationNFT()).authorizeGame(address(lobby));
+        ParticipationNFT(participationNFT).authorizeGame(address(lobby));
         playerGames[msg.sender].push(gameCount);
         emit GameCreated(gameCount, address(lobby), msg.sender);
         return address(lobby);
@@ -97,10 +103,12 @@ contract GameFactory is Ownable, ReentrancyGuard {
 
     function setProtocolFee(uint256 fee) external onlyOwner {
         require(fee <= 10, "Fee max 10%");
+        emit ProtocolFeeSet(protocolFeePercent, fee);
         protocolFeePercent = fee;
     }
 
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        emit FeeRecipientSet(feeRecipient, _feeRecipient);
         feeRecipient = _feeRecipient;
     }
 }
