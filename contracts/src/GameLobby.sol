@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interfaces/IOracleAdapter.sol";
 import "./interfaces/IGameFactory.sol";
+import "./ScoreEngine.sol";
+import "./ParticipationNFT.sol";
 
 contract GameLobby is ReentrancyGuard {
     enum GameState { OPEN, ACTIVE, COMPLETED, CANCELLED }
@@ -29,6 +31,7 @@ contract GameLobby is ReentrancyGuard {
     address public factory;
     address public creator;
     address public oracleFeed;
+    uint256 public gameId;
     uint256 public stakeAmount;
     uint256 public maxPlayers;
     uint256 public roundCount;
@@ -48,6 +51,9 @@ contract GameLobby is ReentrancyGuard {
     address public winner;
     address public secondPlace;
     address public thirdPlace;
+
+    ScoreEngine public scoreEngine;
+    ParticipationNFT public participationNFT;
 
     modifier inState(GameState _state) {
         _checkState(_state);
@@ -79,6 +85,7 @@ contract GameLobby is ReentrancyGuard {
 
     constructor(
         address _factory,
+        uint256 _gameId,
         uint256 _stakeAmount,
         uint256 _maxPlayers,
         uint256 _roundCount,
@@ -87,11 +94,14 @@ contract GameLobby is ReentrancyGuard {
     ) {
         factory = _factory;
         creator = msg.sender;
+        gameId = _gameId;
         stakeAmount = _stakeAmount;
         maxPlayers = _maxPlayers;
         roundCount = _roundCount;
         eliminationPercent = _eliminationPercent;
         oracleFeed = _oracleFeed;
+        scoreEngine = ScoreEngine(IGameFactory(_factory).scoreEngine());
+        participationNFT = ParticipationNFT(IGameFactory(_factory).participationNFT());
         state = GameState.OPEN;
     }
 
@@ -204,29 +214,11 @@ contract GameLobby is ReentrancyGuard {
                 continue;
             }
 
-            uint256 roundScore = _computeScore(pred.predictedValue, resolvedPrice, round.startTime, round.endTime);
+            uint256 roundScore = scoreEngine.computeScore(pred.predictedValue, resolvedPrice, round.startTime, round.endTime);
             scores[player] += roundScore;
         }
 
         emit RoundResolved(currentRound, resolvedPrice);
-    }
-
-    function _computeScore(int256 predicted, int256 resolved, uint256 startTime, uint256 deadline) internal pure returns (uint256) {
-        if (resolved == 0) return 0;
-        uint256 diff = abs(predicted - resolved);
-        uint256 baseScore = 100 - (diff * 100) / uint256(resolved);
-        if (baseScore > 100) baseScore = 0;
-
-        uint256 timeBonus = 0;
-        if (deadline > startTime) {
-            timeBonus = ((deadline - startTime) * 10) / deadline;
-        }
-
-        return baseScore + timeBonus;
-    }
-
-    function abs(int256 x) internal pure returns (uint256) {
-        return uint256(x < 0 ? -x : x);
     }
 
     function eliminatePlayers() external {
@@ -238,14 +230,15 @@ contract GameLobby is ReentrancyGuard {
             if (!isEliminated[activePlayers[i]]) remainingCount++;
         }
 
-        uint256 toEliminate = maxPlayers >= 20
-            ? (remainingCount * eliminationPercent) / 100
-            : 1;
-
-        if (toEliminate == 0) toEliminate = 1;
+        uint256 toEliminate = scoreEngine.getEliminationCutoff(remainingCount, eliminationPercent);
         if (toEliminate >= remainingCount) toEliminate = remainingCount - 1;
 
-        address[] memory sorted = _sortPlayersByScore(activePlayers);
+        uint256[] memory scoreValues = new uint256[](activePlayers.length);
+        for (uint256 i = 0; i < activePlayers.length; i++) {
+            scoreValues[i] = scores[activePlayers[i]];
+        }
+        address[] memory sorted = scoreEngine.rankPlayers(activePlayers, scoreValues);
+
         uint256 eliminated;
         for (uint256 i = sorted.length; i > 0 && eliminated < toEliminate; i--) {
             if (!isEliminated[sorted[i - 1]]) {
@@ -267,25 +260,15 @@ contract GameLobby is ReentrancyGuard {
         }
     }
 
-    function _sortPlayersByScore(address[] memory _players) internal view returns (address[] memory) {
-        address[] memory sorted = _players;
-        uint256 n = sorted.length;
-        for (uint256 i = 0; i < n; i++) {
-            for (uint256 j = 0; j < n - i - 1; j++) {
-                if (scores[sorted[j]] > scores[sorted[j + 1]]) {
-                    address tmp = sorted[j];
-                    sorted[j] = sorted[j + 1];
-                    sorted[j + 1] = tmp;
-                }
-            }
-        }
-        return sorted;
-    }
-
     function _completeGame() internal {
         state = GameState.COMPLETED;
 
-        address[] memory ranked = _sortPlayersByScore(activePlayers);
+        uint256[] memory scoreValues = new uint256[](activePlayers.length);
+        for (uint256 i = 0; i < activePlayers.length; i++) {
+            scoreValues[i] = scores[activePlayers[i]];
+        }
+        address[] memory ranked = scoreEngine.rankPlayers(activePlayers, scoreValues);
+
         uint256 alive;
         for (uint256 i = 0; i < ranked.length; i++) {
             if (!isEliminated[ranked[i]]) alive++;
@@ -324,6 +307,25 @@ contract GameLobby is ReentrancyGuard {
         if (fee > 0) {
             (bool fs, ) = payable(IGameFactory(factory).feeRecipient()).call{value: fee}("");
             require(fs, "Fee transfer failed");
+        }
+
+        for (uint256 i = 0; i < players.length; i++) {
+            address player = players[i];
+            uint256 rank;
+            for (uint256 j = 0; j < ranked.length; j++) {
+                if (ranked[j] == player) {
+                    rank = ranked.length - j;
+                    break;
+                }
+            }
+            participationNFT.mintBadge(player, ParticipationNFT.GameResult({
+                gameId: gameId,
+                finalRank: rank,
+                roundsSurvived: isEliminated[player] ? (currentRound - 1) : currentRound,
+                prizeWon: player == winner ? (remainingPool * 70) / 100 :
+                          player == secondPlace ? (remainingPool * 20) / 100 :
+                          player == thirdPlace ? (remainingPool * 10) / 100 : 0
+            }));
         }
 
         emit GameCompleted(winner, remainingPool);

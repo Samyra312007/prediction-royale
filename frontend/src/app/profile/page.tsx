@@ -18,25 +18,27 @@ import {
 interface PlayerRecord {
   id: number;
   wallet_address: string;
-  games_played: number;
-  wins: number;
-  total_earned: string;
+  total_games: number;
+  total_wins: number;
+  total_earned_wei: string;
   created_at: string;
 }
 
 interface GameHistory {
   id: number;
   contract_address: string;
-  stake_amount: string;
+  stake_amount_wei: string;
   max_players: number;
-  state: number;
+  state: string;
   created_at: string;
-  prize_pool: string;
+  prize_pool_wei: string;
+  current_round: number;
+  round_count: number;
+  winner_address: string | null;
 }
 
 function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
   const [display, setDisplay] = useState(0);
-
   useEffect(() => {
     const duration = 800;
     const steps = 30;
@@ -53,13 +55,7 @@ function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string
     }, duration / steps);
     return () => clearInterval(interval);
   }, [value]);
-
-  return (
-    <span>
-      {display}
-      {suffix}
-    </span>
-  );
+  return <span>{display}{suffix}</span>;
 }
 
 export default function ProfilePage() {
@@ -71,15 +67,20 @@ export default function ProfilePage() {
   const loadProfile = useCallback(async () => {
     if (!address) return;
     try {
-      const [playerData, gamesData] = await Promise.all([
+      const [playerData, participantData] = await Promise.all([
         supabase.from("players").select("*").eq("wallet_address", address.toLowerCase()).single(),
-        supabase.from("games").select("*").order("created_at", { ascending: false }).limit(10),
+        supabase
+          .from("game_participants")
+          .select("game_id, games(*)")
+          .eq("wallet_address", address.toLowerCase())
+          .order("joined_at", { ascending: false, foreignTable: "games" })
+          .limit(10),
       ]);
       if (playerData.data) setPlayer(playerData.data);
-      const playerGames = gamesData.data?.filter(
-        (g: any) => g.creator_address?.toLowerCase() === address.toLowerCase()
-      );
-      setGames(playerGames || []);
+      const pGames = participantData.data
+        ?.map((p: any) => p.games)
+        .filter(Boolean) as GameHistory[] | undefined;
+      setGames(pGames || []);
     } catch (e) {
       console.error("loadProfile failed:", e);
     } finally {
@@ -112,8 +113,8 @@ export default function ProfilePage() {
     );
   }
 
-  const gamesPlayed = player?.games_played ?? games.length;
-  const wins = player?.wins ?? 0;
+  const gamesPlayed = player?.total_games ?? games.length;
+  const wins = player?.total_wins ?? 0;
   const winRate = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0;
 
   return (
@@ -147,34 +148,19 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <motion.div
-                  whileHover={{ y: -2 }}
-                  className="rounded-xl bg-surface-950/50 p-4 text-center backdrop-blur-sm"
-                >
+                <motion.div whileHover={{ y: -2 }} className="rounded-xl bg-surface-950/50 p-4 text-center backdrop-blur-sm">
                   <UsersIcon className="mx-auto mb-2 h-5 w-5 text-cyber-400" />
-                  <p className="font-display text-2xl font-bold text-white">
-                    <AnimatedNumber value={gamesPlayed} />
-                  </p>
+                  <p className="font-display text-2xl font-bold text-white"><AnimatedNumber value={gamesPlayed} /></p>
                   <p className="text-xs text-surface-500">Games</p>
                 </motion.div>
-                <motion.div
-                  whileHover={{ y: -2 }}
-                  className="rounded-xl bg-surface-950/50 p-4 text-center backdrop-blur-sm"
-                >
+                <motion.div whileHover={{ y: -2 }} className="rounded-xl bg-surface-950/50 p-4 text-center backdrop-blur-sm">
                   <CrownIcon className="mx-auto mb-2 h-5 w-5 text-success" />
-                  <p className="font-display text-2xl font-bold text-white">
-                    <AnimatedNumber value={wins} />
-                  </p>
+                  <p className="font-display text-2xl font-bold text-white"><AnimatedNumber value={wins} /></p>
                   <p className="text-xs text-surface-500">Wins</p>
                 </motion.div>
-                <motion.div
-                  whileHover={{ y: -2 }}
-                  className="rounded-xl bg-surface-950/50 p-4 text-center backdrop-blur-sm"
-                >
+                <motion.div whileHover={{ y: -2 }} className="rounded-xl bg-surface-950/50 p-4 text-center backdrop-blur-sm">
                   <TargetIcon className="mx-auto mb-2 h-5 w-5 text-warning" />
-                  <p className="font-display text-2xl font-bold text-white">
-                    <AnimatedNumber value={Math.round(winRate)} suffix="%" />
-                  </p>
+                  <p className="font-display text-2xl font-bold text-white"><AnimatedNumber value={Math.round(winRate)} suffix="%" /></p>
                   <p className="text-xs text-surface-500">Win Rate</p>
                 </motion.div>
               </div>
@@ -211,7 +197,7 @@ export default function ProfilePage() {
                     >
                       <div>
                         <p className="font-mono text-xs text-surface-500">
-                          {g.contract_address.slice(0, 6)}...{g.contract_address.slice(-4)}
+                          {g.contract_address?.slice(0, 6)}...{g.contract_address?.slice(-4)}
                         </p>
                         <p className="text-xs text-surface-600">
                           {g.created_at ? new Date(g.created_at).toLocaleDateString() : "Recent"}
@@ -219,14 +205,10 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-right">
                         <p className="font-mono text-sm font-bold text-surface-300">
-                          {g.prize_pool ? (Number(g.prize_pool) / 1e18).toFixed(3) : "0"} ETH
+                          {g.prize_pool_wei ? (Number(g.prize_pool_wei) / 1e18).toFixed(3) : "0"} ETH
                         </p>
-                        <span
-                          className={`text-xs ${
-                            g.state === 2 ? "text-success" : g.state === 1 ? "text-cyber-400" : "text-surface-500"
-                          }`}
-                        >
-                          {g.state === 2 ? "Completed" : g.state === 1 ? "Active" : "Open"}
+                        <span className={`text-xs ${g.state === "COMPLETED" ? "text-success" : g.state === "ACTIVE" ? "text-cyber-400" : "text-surface-500"}`}>
+                          {g.state?.charAt(0) + g.state?.slice(1).toLowerCase() || "Open"}
                         </span>
                       </div>
                     </motion.div>

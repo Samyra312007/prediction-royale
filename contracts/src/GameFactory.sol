@@ -4,19 +4,33 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./GameLobby.sol";
+import "./ParticipationNFT.sol";
+import "./interfaces/IGameFactory.sol";
 
 contract GameFactory is Ownable, ReentrancyGuard {
     uint256 public gameCount;
     uint256 public protocolFeePercent;
     address public feeRecipient;
+    address public scoreEngine;
+    address public participationNFT;
     mapping(uint256 => address) public games;
     mapping(address => uint256[]) private playerGames;
 
     event GameCreated(uint256 indexed gameId, address gameAddress, address creator);
 
-    constructor(address _feeRecipient) Ownable(msg.sender) {
+    constructor(address _feeRecipient, address _scoreEngine, address _participationNFT) Ownable(msg.sender) {
         feeRecipient = _feeRecipient;
+        scoreEngine = _scoreEngine;
+        participationNFT = _participationNFT;
         protocolFeePercent = 3;
+    }
+
+    function setScoreEngine(address _scoreEngine) external onlyOwner {
+        scoreEngine = _scoreEngine;
+    }
+
+    function setParticipationNFT(address _participationNFT) external onlyOwner {
+        participationNFT = _participationNFT;
     }
 
     function createGame(
@@ -35,6 +49,7 @@ contract GameFactory is Ownable, ReentrancyGuard {
         gameCount++;
         GameLobby lobby = new GameLobby(
             address(this),
+            gameCount,
             stakeAmount,
             maxPlayers,
             roundCount,
@@ -42,6 +57,7 @@ contract GameFactory is Ownable, ReentrancyGuard {
             oracleFeed
         );
         games[gameCount] = address(lobby);
+        ParticipationNFT(IGameFactory(address(this)).participationNFT()).authorizeGame(address(lobby));
         playerGames[msg.sender].push(gameCount);
         emit GameCreated(gameCount, address(lobby), msg.sender);
         return address(lobby);

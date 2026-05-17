@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { config } from "../../wagmi";
 import GameLobbyABI from "@/lib/abi/GameLobby.json";
+import { CONTRACT_ADDRESSES, OracleAdapterABI } from "@/lib/contracts";
 import { Navbar } from "@/components/Navbar";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { PredictionButtons } from "@/components/PredictionButtons";
@@ -27,6 +28,7 @@ import {
   getStoredValue,
 } from "@/lib/commitReveal";
 import { useBTCPrice } from "@/hooks/useBTCPrice";
+import { PriceChart } from "@/components/PriceChart";
 import {
   TrophyIcon,
   CrownIcon,
@@ -85,8 +87,9 @@ export default function GamePage() {
   const [loading, setLoading] = useState(true);
   const [revealing, setRevealing] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [priceHistory, setPriceHistory] = useState<{ timestamp: string; price: number }[]>([]);
 
-  const { formattedPrice, change24h, isLoading: priceLoading } = useBTCPrice();
+  const { formattedPrice, change24h, price, isLoading: priceLoading } = useBTCPrice();
 
   const btcPrice = formattedPrice;
   const btcChange = change24h;
@@ -139,6 +142,16 @@ export default function GamePage() {
     if (!isConnected) return;
     loadGameData();
   }, [isConnected, loadGameData]);
+
+  useEffect(() => {
+    if (price !== null) {
+      setPriceHistory((prev) => {
+        const next = [...prev, { timestamp: new Date().toISOString(), price }];
+        if (next.length > 30) next.splice(0, next.length - 30);
+        return next;
+      });
+    }
+  }, [price]);
 
   useEffect(() => {
     if (!address) return;
@@ -202,11 +215,20 @@ export default function GamePage() {
     if (!address || !currentRound) return;
     const salt = generateSalt();
     const saltWithPrefix = `0x${salt}` as `0x${string}`;
-    const targetVal = 100n;
-    storeSalt(gameAddress, currentRound, address, salt);
-    storeValue(gameAddress, currentRound, address, direction === "yes" ? "1" : "0");
-    const commitment = computeCommitment(targetVal, saltWithPrefix, address);
     try {
+      const raw = await readContract(config, {
+        address: CONTRACT_ADDRESSES.oracleAdapter,
+        abi: OracleAdapterABI,
+        functionName: "getLatestPrice",
+      }) as [bigint, bigint];
+      const currentPrice = raw[0];
+      const premium = currentPrice / 100n;
+      const predictedPrice = direction === "yes"
+        ? currentPrice + premium
+        : currentPrice - premium;
+      storeSalt(gameAddress, currentRound, address, salt);
+      storeValue(gameAddress, currentRound, address, predictedPrice.toString());
+      const commitment = computeCommitment(predictedPrice, saltWithPrefix, address);
       showToast("Locking in your prediction...", "pending");
       const hash = await writeContract(config, {
         address: gameAddress, abi: GameLobbyABI,
@@ -351,6 +373,10 @@ export default function GamePage() {
                     )}
                   </p>
                   {roundEndTime > 0 && <CountdownTimer targetTimestamp={roundEndTime} />}
+                </div>
+
+                <div className="mb-6">
+                  <PriceChart data={priceHistory} />
                 </div>
 
                 {gameState === "committing" && !committed && (
@@ -539,6 +565,14 @@ export default function GamePage() {
                       roundsSurvived={currentRound}
                     />
                   )}
+                  <a
+                    href={`https://sepolia.arbiscan.io/address/${gameAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl border border-surface-700 bg-surface-800 px-5 py-2.5 text-sm font-semibold text-surface-300 transition-colors hover:bg-surface-700"
+                  >
+                    View on Arbiscan
+                  </a>
                 </div>
               </motion.div>
             )}

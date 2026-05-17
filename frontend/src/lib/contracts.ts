@@ -2,7 +2,7 @@ export const CHAIN_ID = 421614;
 
 export const CONTRACT_ADDRESSES = {
   gameFactory: (process.env.NEXT_PUBLIC_GAME_FACTORY_ADDRESS || "0x0000000000000000000000000000000000000000") as `0x${string}`,
-  oracleAdapter: "0x7e691D4CD5C4005F3681aB31C2584f4Ba5911310" as `0x${string}`,
+  oracleAdapter: (process.env.NEXT_PUBLIC_ORACLE_ADAPTER || "0x7e691D4CD5C4005F3681aB31C2584f4Ba5911310") as `0x${string}`,
 } as const;
 
 export const CHAINLINK_FEEDS = {

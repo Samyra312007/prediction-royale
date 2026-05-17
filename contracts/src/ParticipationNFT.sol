@@ -14,17 +14,30 @@ contract ParticipationNFT is ERC721, Ownable {
 
     uint256 public nextTokenId;
     address public factory;
+    mapping(address => bool) public authorizedGames;
     mapping(uint256 => GameResult) public gameResults;
     mapping(address => uint256[]) public playerTokens;
 
     event BadgeMinted(address indexed player, uint256 indexed tokenId, uint256 gameId);
 
+    modifier onlyAuthorized() {
+        require(msg.sender == factory || authorizedGames[msg.sender], "Not authorized");
+        _;
+    }
+
     constructor(address _factory) ERC721("PMBR Badge", "PMBR") Ownable(msg.sender) {
         factory = _factory;
     }
 
-    function mintBadge(address player, GameResult calldata result) external {
-        require(msg.sender == factory, "Only factory");
+    function setFactory(address _factory) external onlyOwner {
+        factory = _factory;
+    }
+
+    function authorizeGame(address gameAddr) external onlyOwner {
+        authorizedGames[gameAddr] = true;
+    }
+
+    function mintBadge(address player, GameResult calldata result) external onlyAuthorized {
         nextTokenId++;
         uint256 tokenId = nextTokenId;
         _safeMint(player, tokenId);

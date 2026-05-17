@@ -3,17 +3,25 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/GameFactory.sol";
+import "../src/ScoreEngine.sol";
+import "../src/ParticipationNFT.sol";
 import "../src/mocks/MockOracle.sol";
 
 contract GameFactoryTest is Test {
     GameFactory factory;
+    ScoreEngine scoreEngine;
+    ParticipationNFT nft;
     MockOracle oracle;
     address feeRecipient = address(0x1234);
     address player1 = address(0xABCD);
     address player2 = address(0xDCBA);
 
     function setUp() public {
-        factory = new GameFactory(feeRecipient);
+        scoreEngine = new ScoreEngine();
+        nft = new ParticipationNFT(address(0));
+        factory = new GameFactory(feeRecipient, address(scoreEngine), address(nft));
+        nft.setFactory(address(factory));
+        nft.transferOwnership(address(factory));
         oracle = new MockOracle(50000000000, 8);
     }
 

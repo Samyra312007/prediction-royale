@@ -20,14 +20,18 @@ contract DeployAll is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        GameFactory factory = new GameFactory(feeRecipient);
         ScoreEngine scoreEngine = new ScoreEngine();
+        ParticipationNFT nft = new ParticipationNFT(address(0)); // factory set below
+        GameFactory factory = new GameFactory(feeRecipient, address(scoreEngine), address(nft));
+        nft.setFactory(address(factory));
+        nft.transferOwnership(address(factory));
         OracleAdapter oracleAdapter = new OracleAdapter(btcFeed);
 
         vm.stopBroadcast();
 
         console.log("GameFactory deployed at:", address(factory));
         console.log("ScoreEngine deployed at:", address(scoreEngine));
+        console.log("ParticipationNFT deployed at:", address(nft));
         console.log("OracleAdapter deployed at:", address(oracleAdapter));
     }
 }

@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import "../src/GameFactory.sol";
 import "../src/GameLobby.sol";
+import "../src/ScoreEngine.sol";
+import "../src/ParticipationNFT.sol";
 import "../src/mocks/MockOracle.sol";
 import "../src/OracleAdapter.sol";
 
@@ -12,6 +14,8 @@ contract GameLobbyTest is Test {
     GameLobby lobby;
     MockOracle mockOracle;
     OracleAdapter oracleAdapter;
+    ScoreEngine scoreEngine;
+    ParticipationNFT nft;
     address feeRecipient = address(0x1234);
     address player1 = address(0x1111);
     address player2 = address(0x2222);
@@ -20,7 +24,11 @@ contract GameLobbyTest is Test {
     address player5 = address(0x5555);
 
     function setUp() public {
-        factory = new GameFactory(feeRecipient);
+        scoreEngine = new ScoreEngine();
+        nft = new ParticipationNFT(address(0));
+        factory = new GameFactory(feeRecipient, address(scoreEngine), address(nft));
+        nft.setFactory(address(factory));
+        nft.transferOwnership(address(factory));
         mockOracle = new MockOracle(50000000000, 8);
         oracleAdapter = new OracleAdapter(address(mockOracle));
         address gameAddr = factory.createGame(0.01 ether, 5, 3, 20, address(oracleAdapter));

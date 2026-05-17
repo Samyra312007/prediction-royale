@@ -6,8 +6,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "db:migrate": "tsx src/db/migrate.ts",
-    "indexer": "tsx src/indexer/eventListener.ts"
+    "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "express": "^4.18.0",
