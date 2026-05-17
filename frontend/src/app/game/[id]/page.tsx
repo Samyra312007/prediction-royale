@@ -26,6 +26,7 @@ import {
   getStoredSalt,
   getStoredValue,
 } from "@/lib/commitReveal";
+import { useBTCPrice } from "@/hooks/useBTCPrice";
 import {
   TrophyIcon,
   CrownIcon,
@@ -84,6 +85,14 @@ export default function GamePage() {
   const [loading, setLoading] = useState(true);
   const [revealing, setRevealing] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
+
+  const { formattedPrice, change24h, isLoading: priceLoading } = useBTCPrice();
+
+  const btcPrice = formattedPrice;
+  const btcChange = change24h;
+  const questionText = currentRound > 0
+    ? `Will BTC/USD go UP or DOWN from $${btcPrice}?`
+    : "Will BTC/USD go UP or DOWN in the next 5 minutes?";
 
   const loadPlayers = useCallback(async () => {
     try {
@@ -327,11 +336,19 @@ export default function GamePage() {
                     <span className="text-xs text-surface-500">of {totalRounds}</span>
                   </div>
                   <h2 className="mb-2 font-display text-xl font-bold text-white sm:text-2xl">
-                    Will BTC be above $67,500 in 5 minutes?
+                    {questionText}
                   </h2>
                   <p className="mb-5 text-sm text-surface-400">
-                    Current BTC: <span className="font-mono text-surface-300">$67,320</span>{" "}
-                    <span className="text-success">▲ +0.3%</span>
+                    Current BTC:{" "}
+                    <span className="font-mono text-surface-300">
+                      {priceLoading ? "---" : `$${btcPrice}`}
+                    </span>{" "}
+                    {btcChange !== null && (
+                      <span className={btcChange >= 0 ? "text-success" : "text-danger"}>
+                        {btcChange >= 0 ? "▲" : "▼"} {btcChange >= 0 ? "+" : ""}
+                        {btcChange.toFixed(2)}%
+                      </span>
+                    )}
                   </p>
                   {roundEndTime > 0 && <CountdownTimer targetTimestamp={roundEndTime} />}
                 </div>
