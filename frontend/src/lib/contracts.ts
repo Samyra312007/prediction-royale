@@ -1,14 +1,12 @@
 export const CHAIN_ID = 421614;
 
-function requireEnv(key: string): `0x${string}` {
-  const val = process.env[key];
-  if (!val) throw new Error(`Missing required env var: ${key}`);
-  return val as `0x${string}`;
-}
+// Deployed on Arbitrum Sepolia — update if redeployed
+const FACTORY = "0x9C91a7555de8F2D5Db08c8ec07965213225Bf642";
+const ORACLE = "0xcDAC89a61E933d908650712a0eb42e6Cd0094a70";
 
 export const CONTRACT_ADDRESSES = {
-  gameFactory: requireEnv("NEXT_PUBLIC_GAME_FACTORY_ADDRESS"),
-  oracleAdapter: requireEnv("NEXT_PUBLIC_ORACLE_ADAPTER"),
+  gameFactory: FACTORY as `0x${string}`,
+  oracleAdapter: ORACLE as `0x${string}`,
 } as const;
 
 export const CHAINLINK_FEEDS = {

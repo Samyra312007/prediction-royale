@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { supabase, upsertPlayer } from "../db/queries";
+import { supabase, upsertPlayer } from "./db/queries";
 
 const RPC_URL = process.env.ARB_SEPOLIA_RPC || "https://sepolia-rollup.arbitrum.io/rpc";
 const FACTORY_ADDRESS = process.env.GAME_FACTORY_ADDRESS || "";
@@ -64,13 +64,6 @@ async function main() {
   const p = getProvider();
 
   p.on("error", (err) => console.error("Provider error:", err));
-  p.on("disconnected", () => {
-    console.log("Provider disconnected, reconnecting...");
-    setTimeout(() => {
-      provider = new ethers.JsonRpcProvider(RPC_URL);
-      startListening();
-    }, 5000);
-  });
 
   await startListening();
 }
@@ -86,8 +79,15 @@ async function startListening() {
     console.log(`Game #${gameId} created at ${gameAddress} by ${creator}`);
     activeLobbies.add(gameAddress);
     const txHash = event?.log?.transactionHash || "";
+    const lobby = new ethers.Contract(gameAddress, GAME_LOBBY_ABI, getProvider());
+    const [stake, maxP, rounds, elimPct, feed] = await Promise.all([
+      lobby.stakeAmount(), lobby.maxPlayers(), lobby.roundCount(),
+      lobby.eliminationPercent(), lobby.oracleFeed(),
+    ]);
     await supabase.from("games").upsert({
       contract_address: gameAddress, factory_game_id: Number(gameId), state: "OPEN", tx_hash_created: txHash,
+      stake_amount_wei: stake.toString(), max_players: Number(maxP), round_count: Number(rounds),
+      elimination_percent: Number(elimPct), oracle_feed: feed,
     }, { onConflict: "contract_address" });
     listenToLobby(gameAddress);
   });

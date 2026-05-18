@@ -33,19 +33,23 @@ oracleRouter.get("/history/:feed", async (req: Request, res: Response) => {
     const feed = req.params.feed.toLowerCase();
     const pythId = PYTH_FEED_IDS[feed] || feed;
     const now = Math.floor(Date.now() / 1000);
-    const response = await fetch(
-      `https://hermes.pyth.network/v2/updates/price/${pythId}?start_time=${now - 600}&end_time=${now}`
-    );
-    const data = await response.json();
-    const prices = (data.parsed || []).map((p: any) => ({
-      timestamp: p.timestamp ? Number(p.timestamp) * 1000 : Date.now(),
-      price: Number(p.price?.price || p.price) / 1e8,
-    }));
-    if (prices.length === 0) {
-      return res.json([]);
+
+    const prices: { timestamp: number; price: number }[] = [];
+    for (let t = now - 600; t < now; t += 60) {
+      try {
+        const response = await fetch(`https://hermes.pyth.network/v2/updates/price/${t}?ids[]=${pythId}`);
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch { continue; }
+        const p = data.parsed?.find?.((x: any) => x.id === pythId) || data.parsed?.[0];
+        if (p?.price?.price) {
+          prices.push({
+            timestamp: Number(p.price.publish_time || t) * 1000,
+            price: Number(p.price.price) / 1e8,
+          });
+        }
+      } catch { continue; }
     }
     res.json(prices.slice(-20));
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch { res.json([]); }
 });

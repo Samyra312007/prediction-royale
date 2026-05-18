@@ -79,22 +79,16 @@ CREATE TABLE IF NOT EXISTS rounds (
 
 CREATE TABLE IF NOT EXISTS predictions (
     id                  SERIAL PRIMARY KEY,
-    round_id            INTEGER REFERENCES rounds(id) ON DELETE CASCADE,
     game_id             INTEGER REFERENCES games(id) ON DELETE CASCADE,
-    player_id           INTEGER REFERENCES players(id) ON DELETE CASCADE,
-    wallet_address      VARCHAR(42) NOT NULL,
-    commitment_hash     VARCHAR(66) NOT NULL,
-    predicted_value     NUMERIC(20, 8),
-    predicted_direction BOOLEAN,
+    round_number        INTEGER NOT NULL,
+    player_address      VARCHAR(42) NOT NULL,
+    game_contract       VARCHAR(42) NOT NULL,
     is_committed        BOOLEAN DEFAULT FALSE,
     is_revealed         BOOLEAN DEFAULT FALSE,
-    is_correct          BOOLEAN,
-    score_earned        INTEGER DEFAULT 0,
-    submitted_at        TIMESTAMP,
+    predicted_value     NUMERIC(20, 8),
+    committed_at        TIMESTAMP,
     revealed_at         TIMESTAMP,
-    commit_tx_hash      VARCHAR(66),
-    reveal_tx_hash      VARCHAR(66),
-    UNIQUE(round_id, player_id)
+    UNIQUE(player_address, round_number, game_contract)
 );
 
 CREATE TABLE IF NOT EXISTS round_scores (
@@ -123,6 +117,17 @@ CREATE TABLE IF NOT EXISTS nft_badges (
     metadata_uri    TEXT
 );
 
+CREATE TABLE IF NOT EXISTS game_prizes (
+    id              SERIAL PRIMARY KEY,
+    game_id         INTEGER REFERENCES games(id) ON DELETE CASCADE,
+    vault_address   VARCHAR(42) NOT NULL,
+    event_type      VARCHAR(20) NOT NULL,
+    amount          NUMERIC(78, 0) NOT NULL,
+    player_address  VARCHAR(42),
+    from_address    VARCHAR(42),
+    created_at      TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS price_snapshots (
     id              SERIAL PRIMARY KEY,
     oracle_feed     VARCHAR(42) NOT NULL,
@@ -141,9 +146,11 @@ CREATE INDEX IF NOT EXISTS idx_gp_game ON game_participants(game_id);
 CREATE INDEX IF NOT EXISTS idx_gp_player ON game_participants(player_id);
 CREATE INDEX IF NOT EXISTS idx_rounds_game ON rounds(game_id);
 CREATE INDEX IF NOT EXISTS idx_rounds_resolved ON rounds(is_resolved);
-CREATE INDEX IF NOT EXISTS idx_predictions_round ON predictions(round_id);
+CREATE INDEX IF NOT EXISTS idx_predictions_game ON predictions(game_id);
+CREATE INDEX IF NOT EXISTS idx_predictions_player ON predictions(player_address);
 CREATE INDEX IF NOT EXISTS idx_scores_round ON round_scores(round_id);
 CREATE INDEX IF NOT EXISTS idx_badges_wallet ON nft_badges(wallet_address);
+CREATE INDEX IF NOT EXISTS idx_prizes_game ON game_prizes(game_id);
 
 -- Enable Realtime for live updates
 ALTER PUBLICATION supabase_realtime ADD TABLE games;
