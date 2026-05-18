@@ -234,23 +234,28 @@ contract EdgeCasesTest is Test {
 
     function _playOneRound() internal {
         address[] memory allPlayers = lobby.getPlayers();
+        uint256 ts = block.timestamp;
         for (uint256 i = 0; i < allPlayers.length; i++) {
             if (lobby.isEliminated(allPlayers[i])) continue;
             bytes32 salt = bytes32(uint256(uint160(allPlayers[i])));
             bytes32 cmt = keccak256(abi.encodePacked(int256(50000000000), salt, allPlayers[i]));
             vm.prank(allPlayers[i]);
             lobby.submitCommitment(cmt);
-            vm.warp(block.timestamp + 2 seconds);
+            ts += 2;
+            vm.warp(ts);
         }
-        vm.warp(block.timestamp + 29 seconds);
+        ts += 29;
+        vm.warp(ts);
         for (uint256 i = 0; i < allPlayers.length; i++) {
             if (lobby.isEliminated(allPlayers[i])) continue;
             bytes32 salt = bytes32(uint256(uint160(allPlayers[i])));
             vm.prank(allPlayers[i]);
             lobby.revealPrediction(50000000000, salt);
-            vm.warp(block.timestamp + 2 seconds);
+            ts += 2;
+            vm.warp(ts);
         }
-        vm.warp(block.timestamp + 70 seconds);
+        ts += 70;
+        vm.warp(ts);
         mockOracle.setPrice(50000000000);
         lobby.resolveRound();
         lobby.eliminatePlayers();
