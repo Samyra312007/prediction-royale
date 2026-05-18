@@ -5,10 +5,10 @@ import { useParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
   readContract,
-  writeContract,
   watchContractEvent,
   waitForTransactionReceipt,
 } from "wagmi/actions";
+import { tx } from "@/lib/tx";
 import { motion, AnimatePresence } from "framer-motion";
 import { config } from "../../wagmi";
 import GameLobbyABI from "@/lib/abi/GameLobby.json";
@@ -191,7 +191,7 @@ export default function GamePage() {
     if (!vaultAddress || claiming) return;
     setClaiming(true);
     try {
-      const hash = await writeContract(config, {
+      const hash = await tx({
         address: vaultAddress as `0x${string}`, abi: PrizeVaultABI, functionName: "claimPayout",
       });
       await waitForTransactionReceipt(config, { hash });
@@ -282,7 +282,7 @@ export default function GamePage() {
       storeValue(gameAddress, currentRound, address, predictedPrice.toString());
       const commitment = computeCommitment(predictedPrice, saltWithPrefix, address);
       showToast("Locking in your prediction...", "pending");
-      const hash = await writeContract(config, {
+      const hash = await tx({
         address: gameAddress, abi: GameLobbyABI,
         functionName: "submitCommitment", args: [commitment],
       });
@@ -306,7 +306,7 @@ export default function GamePage() {
     setRevealing(true);
     try {
       showToast("Revealing prediction...", "pending");
-      const hash = await writeContract(config, {
+      const hash = await tx({
         address: gameAddress, abi: GameLobbyABI,
         functionName: "revealPrediction",
         args: [BigInt(val), `0x${salt}` as `0x${string}`],

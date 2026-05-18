@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { readContract, writeContract, waitForTransactionReceipt } from "wagmi/actions";
+import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { config } from "../wagmi";
 import { CONTRACT_ADDRESSES, GameFactoryABI, GameLobbyABI, CHAINLINK_FEEDS } from "@/lib/contracts";
+import { tx } from "@/lib/tx";
 import { Navbar } from "@/components/Navbar";
 import { SkeletonList } from "@/components/Skeleton";
 import { showToast } from "@/components/Toast";
@@ -216,7 +217,7 @@ export default function LobbyPage() {
     setCreating(true);
     try {
       showToast("Creating game lobby...", "pending");
-      const hash = await writeContract(config, {
+      const hash = await tx({
         address: CONTRACT_ADDRESSES.gameFactory,
         abi: GameFactoryABI,
         functionName: "createGame",
@@ -245,7 +246,7 @@ export default function LobbyPage() {
     setJoining(lobby.address);
     try {
       showToast("Joining game...", "pending");
-      const hash = await writeContract(config, {
+      const hash = await tx({
         address: lobby.address,
         abi: GameLobbyABI,
         functionName: "joinGame",
