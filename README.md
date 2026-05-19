@@ -1,6 +1,6 @@
-# 🏆 Prediction Market Battle Royale (PMBR)
+# 🏆 Prediction Royale (PR)
 
-**Predict. Compete. Survive.** — A gamified prediction market where players stake ETH, predict price movements, and compete in elimination rounds until one winner takes the pot.
+**Predict. Compete. Survive.** — A gamified prediction market where players stake ETH, predict BTC price movements, and compete in elimination rounds until one winner takes the pot.
 
 ---
 
@@ -79,7 +79,7 @@ User → Frontend (Next.js) → RainbowKit/wagmi → Smart Contracts (Arbitrum S
 ## 📁 Project Structure
 
 ```
-pmbr/
+pr/
 ├── contracts/           # Foundry project (Smart Contracts)
 │   ├── src/
 │   │   ├── GameFactory.sol      # Lobby factory & registry
