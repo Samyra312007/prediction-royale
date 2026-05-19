@@ -1,8 +1,20 @@
 "use client";
 
-import { http, createConfig } from "wagmi";
-import { arbitrumSepolia } from "wagmi/chains";
+import { http } from "wagmi";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+
+export const arbitrumSepolia = {
+  id: 421614,
+  name: "Arbitrum Sepolia",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://sepolia-rollup.arbitrum.io/rpc"] },
+  },
+  blockExplorers: {
+    default: { name: "Arbiscan", url: "https://sepolia.arbiscan.io" },
+  },
+  testnet: true,
+} as const;
 
 export const config = getDefaultConfig({
   appName: "PMBR",

@@ -1,6 +1,5 @@
-import { arbitrumSepolia } from "wagmi/chains";
 import { switchChain } from "wagmi/actions";
-import { config } from "@/app/wagmi";
+import { config, arbitrumSepolia } from "@/app/wagmi";
 
 const TARGET_CHAIN = arbitrumSepolia;
 const TARGET_CHAIN_ID = TARGET_CHAIN.id;

@@ -212,7 +212,7 @@ export default function GamePage() {
     unsubs.push(
       watchContractEvent(config, {
         address: gameAddress, abi: GameLobbyABI, eventName: "RoundStarted",
-        onLogs(logs) {
+        onLogs(logs: any) {
           const log = logs[0] as any;
           if (log?.args) {
             setCurrentRound(Number(log.args.roundId));
@@ -226,7 +226,7 @@ export default function GamePage() {
     unsubs.push(
       watchContractEvent(config, {
         address: gameAddress, abi: GameLobbyABI, eventName: "RoundResolved",
-        onLogs(logs) {
+        onLogs(logs: any) {
           const log = logs[0] as any;
           if (log?.args) {
             setResolvedValue(Number(log.args.result));
@@ -238,7 +238,7 @@ export default function GamePage() {
     unsubs.push(
       watchContractEvent(config, {
         address: gameAddress, abi: GameLobbyABI, eventName: "PlayerEliminated",
-        onLogs(logs) {
+        onLogs(logs: any) {
           const log = logs[0] as any;
           if (log?.args?.player === address) {
             setIsEliminated(true);
@@ -251,7 +251,7 @@ export default function GamePage() {
     unsubs.push(
       watchContractEvent(config, {
         address: gameAddress, abi: GameLobbyABI, eventName: "GameCompleted",
-        onLogs(logs) {
+        onLogs(logs: any) {
           const log = logs[0] as any;
           if (log?.args) {
             setWinner(log.args.winner as `0x${string}`);
