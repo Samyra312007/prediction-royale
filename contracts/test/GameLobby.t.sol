@@ -63,7 +63,7 @@ contract GameLobbyTest is Test {
         vm.prank(player1);
         lobby.submitCommitment(commitment);
 
-        skip(31 seconds);
+        skip(310 seconds);
 
         vm.prank(player1);
         lobby.revealPrediction(predictedValue, salt);
@@ -109,7 +109,7 @@ contract GameLobbyTest is Test {
     }
 
     function _doRevealPhase() internal {
-        skip(35 seconds);
+        skip(310 seconds);
 
         address[5] memory players = [player1, player2, player3, player4, player5];
         for (uint256 i = 0; i < players.length; i++) {
@@ -124,7 +124,7 @@ contract GameLobbyTest is Test {
     }
 
     function _doResolveAndEliminate() internal {
-        skip(70 seconds);
+        skip(400 seconds);
         mockOracle.setPrice(50000000000);
         lobby.resolveRound();
         lobby.eliminatePlayers();

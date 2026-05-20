@@ -79,7 +79,7 @@ contract EdgeCasesTest is Test {
 
     function test_RevertCommit_AfterWindow() public {
         _join(5);
-        vm.warp(block.timestamp + 31 seconds);
+        vm.warp(block.timestamp + 310 seconds);
         vm.prank(player2);
         bytes32 cmt = keccak256(abi.encodePacked(int256(100), bytes32(0), player2));
         vm.expectRevert("Commit window closed");
@@ -188,7 +188,7 @@ contract EdgeCasesTest is Test {
         vm.warp(block.timestamp + 31 seconds);
         vm.prank(player1);
         lobby.revealPrediction(50100000000, salt);
-        vm.warp(block.timestamp + 61 seconds);
+        vm.warp(block.timestamp + 400 seconds);
         lobby.resolveRound();
         assertTrue(lobby.scores(player1) > 0, "Score should be > 0");
     }
@@ -198,7 +198,7 @@ contract EdgeCasesTest is Test {
         bytes32 cmt = keccak256(abi.encodePacked(int256(100), bytes32(0), player1));
         vm.prank(player1);
         lobby.submitCommitment(cmt);
-        vm.warp(block.timestamp + 100 seconds);
+        vm.warp(block.timestamp + 400 seconds);
         lobby.resolveRound();
         assertEq(lobby.scores(player1), 0, "Missed reveal = 0 score");
     }
@@ -254,7 +254,7 @@ contract EdgeCasesTest is Test {
             ts += 2;
             vm.warp(ts);
         }
-        ts += 70;
+        ts += 400;
         vm.warp(ts);
         mockOracle.setPrice(50000000000);
         lobby.resolveRound();

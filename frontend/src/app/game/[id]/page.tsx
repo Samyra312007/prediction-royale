@@ -41,6 +41,9 @@ import {
   ClockIcon,
 } from "@/components/Icons";
 
+const COMMIT_SECONDS = 300;
+const REVEAL_SECONDS = 60;
+
 type GameState =
   | "waiting"
   | "committing"
@@ -81,12 +84,14 @@ export default function GamePage() {
   const [committed, setCommitted] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [roundEndTime, setRoundEndTime] = useState(0);
+  const [revealEndTime, setRevealEndTime] = useState(0);
   const [resolvedValue, setResolvedValue] = useState(0);
   const [winner, setWinner] = useState<`0x${string}` | null>(null);
   const [prizePool, setPrizePool] = useState(0n);
   const [stakeAmount, setStakeAmount] = useState(0n);
   const [loading, setLoading] = useState(true);
   const [revealing, setRevealing] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
   const [vaultAddress, setVaultAddress] = useState<`0x${string}`>("0x0" as `0x${string}`);
   const [pendingPayout, setPendingPayout] = useState("0");
@@ -133,15 +138,48 @@ export default function GamePage() {
       setPrizePool(pool as bigint);
       setStakeAmount(stake as bigint);
       const stateNum = Number(state);
-      if (stateNum === 2) setGameState("completed");
-      else if (stateNum === 3) setGameState("waiting");
+      if (stateNum === 2) {
+        setGameState("completed");
+      } else if (stateNum === 3) {
+        setGameState("waiting");
+      } else if (stateNum === 1 && address) {
+        const cr = Number(await readContract(config, {
+          address: gameAddress, abi: GameLobbyABI, functionName: "currentRound",
+        }));
+        setCurrentRound(cr);
+        if (cr > 0) {
+          const roundData = await readContract(config, {
+            address: gameAddress, abi: GameLobbyABI, functionName: "rounds", args: [cr - 1],
+          }) as bigint[];
+          const endTime = Number(roundData[2]);
+          const revealDeadline = Number(roundData[3]);
+          const now = Math.floor(Date.now() / 1000);
+          if (now <= endTime) {
+            setGameState("committing");
+            setRoundEndTime(endTime);
+          } else if (now <= revealDeadline) {
+            setGameState("revealing");
+            setRoundEndTime(revealDeadline);
+          }
+          const pred = await readContract(config, {
+            address: gameAddress, abi: GameLobbyABI, functionName: "predictions", args: [address, cr],
+          }) as any;
+          setCommitted(Boolean(pred[2]));
+          setRevealed(Boolean(pred[3]));
+        }
+        const eliminated = await readContract(config, {
+          address: gameAddress, abi: GameLobbyABI, functionName: "isEliminated", args: [address],
+        });
+        setIsEliminated(Boolean(eliminated));
+        if (Boolean(eliminated)) setGameState("eliminated");
+      }
       await loadPlayers();
     } catch (e) {
       console.error("loadGameData failed:", e);
     } finally {
       setLoading(false);
     }
-  }, [gameAddress, loadPlayers]);
+  }, [gameAddress, loadPlayers, address]);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -205,6 +243,25 @@ export default function GamePage() {
     }
   };
 
+  const handleResolve = useCallback(async () => {
+    if (resolving || !currentRound) return;
+    setResolving(true);
+    try {
+      await tx({
+        address: gameAddress, abi: GameLobbyABI,
+        functionName: "resolveRound",
+      });
+      await tx({
+        address: gameAddress, abi: GameLobbyABI,
+        functionName: "eliminatePlayers",
+      });
+    } catch (e: any) {
+      console.error("resolve/eliminate error (may be harmless):", e);
+    } finally {
+      setResolving(false);
+    }
+  }, [gameAddress, currentRound, resolving]);
+
   useEffect(() => {
     if (!address) return;
     const unsubs: (() => void)[] = [];
@@ -218,7 +275,9 @@ export default function GamePage() {
             setCurrentRound(Number(log.args.roundId));
             setCommitted(false); setRevealed(false);
             setGameState("committing");
-            setRoundEndTime(Math.floor(Date.now() / 1000) + 300);
+            const now = Math.floor(Date.now() / 1000);
+            setRoundEndTime(now + COMMIT_SECONDS);
+            setRevealEndTime(now + COMMIT_SECONDS + REVEAL_SECONDS);
           }
         },
       })
@@ -231,6 +290,7 @@ export default function GamePage() {
           if (log?.args) {
             setResolvedValue(Number(log.args.result));
             setGameState("resolving");
+            setTimeout(() => loadGameData(), 2000);
           }
         },
       })
@@ -261,7 +321,7 @@ export default function GamePage() {
       })
     );
     return () => unsubs.forEach((u) => u());
-  }, [gameAddress, address, loadPlayers]);
+  }, [gameAddress, address, loadPlayers, loadGameData]);
 
   async function handlePredict(direction: "yes" | "no") {
     if (!address || !currentRound) return;
@@ -288,7 +348,7 @@ export default function GamePage() {
       });
       await waitForTransactionReceipt(config, { hash });
       setCommitted(true);
-      showToast("Prediction locked! 🔒", "success");
+      showToast("Prediction locked!", "success");
     } catch (e) {
       showToast("Failed to submit prediction", "error");
       console.error("commit failed:", e);
@@ -313,7 +373,7 @@ export default function GamePage() {
       });
       await waitForTransactionReceipt(config, { hash });
       setRevealed(true);
-      showToast("Revealed! ✅", "success");
+      showToast("Revealed!", "success");
     } catch (e) {
       showToast("Failed to reveal", "error");
       console.error("reveal failed:", e);
@@ -321,6 +381,18 @@ export default function GamePage() {
       setRevealing(false);
     }
   }
+
+  const onCommitExpired = useCallback(() => {
+    if (gameState === "committing") {
+      setGameState("revealing");
+    }
+  }, [gameState]);
+
+  const onRevealExpired = useCallback(() => {
+    if (gameState === "revealing") {
+      handleResolve();
+    }
+  }, [gameState, handleResolve]);
 
   const isWinner = address && winner && address.toLowerCase() === winner.toLowerCase();
   const sortedPlayers = [...players].sort((a, b) => (scores[b] || 0) - (scores[a] || 0));
@@ -424,20 +496,27 @@ export default function GamePage() {
                       </span>
                     )}
                   </p>
-                  {roundEndTime > 0 && <CountdownTimer targetTimestamp={roundEndTime} />}
+                  {!isEliminated && gameState === "committing" && (
+                    <CountdownTimer targetTimestamp={roundEndTime} label="Commit window" onExpire={onCommitExpired} />
+                  )}
+                  {!isEliminated && gameState === "revealing" && (
+                    <CountdownTimer targetTimestamp={roundEndTime} label="Reveal window" onExpire={onRevealExpired} />
+                  )}
                 </div>
 
-                <div className="mb-6">
-                  <PriceChart data={priceHistory} />
-                </div>
+                {!isEliminated && (
+                  <div className="mb-6">
+                    <PriceChart data={priceHistory} />
+                  </div>
+                )}
 
-                {gameState === "committing" && !committed && (
+                {gameState === "committing" && !committed && !isEliminated && (
                   <div className="mb-6">
                     <PredictionButtons onPredict={handlePredict} />
                   </div>
                 )}
 
-                {committed && !revealed && (
+                {committed && !revealed && !isEliminated && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -486,6 +565,15 @@ export default function GamePage() {
                       Revealed &mdash; waiting for round to end
                     </p>
                   </motion.div>
+                )}
+
+                {isEliminated && (
+                  <div className="mb-6 rounded-xl border border-danger/20 bg-danger/5 p-4 text-center backdrop-blur-sm">
+                    <p className="flex items-center justify-center gap-2 font-semibold text-danger">
+                      <SkullIcon className="h-4 w-4" />
+                      Eliminated &mdash; spectating
+                    </p>
+                  </div>
                 )}
               </motion.div>
             )}
