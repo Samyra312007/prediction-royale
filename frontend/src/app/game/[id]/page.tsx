@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
   readContract,
+  writeContract,
   watchContractEvent,
   waitForTransactionReceipt,
 } from "wagmi/actions";
@@ -247,14 +248,18 @@ export default function GamePage() {
     if (resolving || !currentRound) return;
     setResolving(true);
     try {
-      await tx({
+      const hash1 = await writeContract(config as any, {
         address: gameAddress, abi: GameLobbyABI,
         functionName: "resolveRound",
-      });
-      await tx({
+        gas: 200000n,
+      } as any);
+      await waitForTransactionReceipt(config, { hash: hash1 });
+      const hash2 = await writeContract(config as any, {
         address: gameAddress, abi: GameLobbyABI,
         functionName: "eliminatePlayers",
-      });
+        gas: 300000n,
+      } as any);
+      await waitForTransactionReceipt(config, { hash: hash2 });
     } catch (e: any) {
       console.error("resolve/eliminate error (may be harmless):", e);
     } finally {
@@ -385,6 +390,7 @@ export default function GamePage() {
   const onCommitExpired = useCallback(() => {
     if (gameState === "committing") {
       setGameState("revealing");
+      setRoundEndTime(prev => prev + REVEAL_SECONDS);
     }
   }, [gameState]);
 
