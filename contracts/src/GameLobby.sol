@@ -39,8 +39,8 @@ contract GameLobby is ReentrancyGuard {
     uint256 public eliminationPercent;
     uint256 public currentRound;
     uint256 public prizePool;
-    uint256 public constant COMMIT_DURATION = 30 seconds;
-    uint256 public constant REVEAL_DURATION = 60 seconds;
+    uint256 public constant COMMIT_DURATION = 300 seconds;
+    uint256 public constant REVEAL_DURATION = 600 seconds;
 
     address[] public players;
     address[] public activePlayers;

@@ -218,7 +218,7 @@ export default function GamePage() {
             setCurrentRound(Number(log.args.roundId));
             setCommitted(false); setRevealed(false);
             setGameState("committing");
-            setRoundEndTime(Math.floor(Date.now() / 1000) + 30);
+            setRoundEndTime(Math.floor(Date.now() / 1000) + 300);
           }
         },
       })
