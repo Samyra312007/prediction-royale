@@ -226,7 +226,7 @@ export default function LobbyPage() {
           BigInt(createForm.maxPlayers),
           BigInt(createForm.rounds),
           BigInt(createForm.elimPercent),
-          CHAINLINK_FEEDS.btcUsd,
+          CONTRACT_ADDRESSES.oracleAdapter,
         ],
       });
       await waitForTransactionReceipt(config, { hash });

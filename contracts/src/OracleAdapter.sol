@@ -16,7 +16,7 @@ contract OracleAdapter {
     function getLatestPrice() external view returns (int256, uint256) {
         (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
         require(price > 0, "Invalid price");
-        require(block.timestamp - updatedAt <= 300, "Price stale");
+        require(block.timestamp - updatedAt <= 86400, "Price stale");
         return (price, updatedAt);
     }
 
