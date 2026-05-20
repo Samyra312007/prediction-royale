@@ -19,7 +19,7 @@ oracleRouter.get("/price/:feed", async (req: Request, res: Response) => {
     const response = await fetch(
       `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${pythId}`
     );
-    const data = await response.json();
+    const data = await response.json() as any;
     const price = Number(data.parsed?.[0]?.price?.price) / 1e8 || 0;
     PRICE_CACHE[feed] = { price, timestamp: Date.now() };
     res.json({ price, feed, cached: false });
