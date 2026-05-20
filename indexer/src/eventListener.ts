@@ -1,3 +1,4 @@
+import http from "http";
 import { ethers } from "ethers";
 import { supabase, upsertPlayer } from "./db/queries";
 
@@ -196,9 +197,9 @@ async function listenToVault(lobbyAddress: string) {
     console.log(`Vault deposit: ${amount} wei from ${from} for ${lobbyAddress}`);
     const gameId = await getGameId(lobbyAddress);
     if (gameId) {
-      await supabase.from("game_prizes").insert({
+      try { await supabase.from("game_prizes").insert({
         game_id: gameId, vault_address: vaultAddr, event_type: "deposited", amount: Number(amount), from_address: from,
-      }).catch(() => {});
+      }); } catch {}
     }
   });
 
@@ -206,9 +207,9 @@ async function listenToVault(lobbyAddress: string) {
     console.log(`Payout allocated: ${amount} wei to ${player} from ${lobbyAddress}`);
     const gameId = await getGameId(lobbyAddress);
     if (gameId) {
-      await supabase.from("game_prizes").insert({
+      try { await supabase.from("game_prizes").insert({
         game_id: gameId, vault_address: vaultAddr, event_type: "allocated", amount: Number(amount), player_address: player,
-      }).catch(() => {});
+      }); } catch {}
     }
   });
 
@@ -216,12 +217,18 @@ async function listenToVault(lobbyAddress: string) {
     console.log(`Payout claimed: ${amount} wei by ${player} from ${lobbyAddress}`);
     const gameId = await getGameId(lobbyAddress);
     if (gameId) {
-      await supabase.from("game_prizes").insert({
+      try { await supabase.from("game_prizes").insert({
         game_id: gameId, vault_address: vaultAddr, event_type: "claimed", amount: Number(amount), player_address: player,
-      }).catch(() => {});
+      }); } catch {}
     }
   });
 }
+
+const healthPort = Number(process.env.PORT) || 10000;
+http.createServer((_req, res) => {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ status: "ok", uptime: process.uptime() }));
+}).listen(healthPort, () => console.log(`Health server on port ${healthPort}`));
 
 async function start() {
   for (let i = 0; i < 10; i++) {
