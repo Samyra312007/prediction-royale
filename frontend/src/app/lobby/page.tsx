@@ -426,7 +426,7 @@ export default function LobbyPage() {
                     onChange={(e) => setCreateForm({ ...createForm, maxPlayers: e.target.value })}
                     className="w-full rounded-xl border border-surface-800 bg-surface-950/50 px-4 py-2.5 text-sm text-white backdrop-blur-sm transition-colors focus:border-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-700"
                   >
-                    {[5, 10, 25, 50, 100].map((n) => (
+                    {[3, 5, 10, 25, 50, 100].map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
