@@ -1,8 +1,8 @@
 export const CHAIN_ID = 421614;
 
 // Deployed on Arbitrum Sepolia — update if redeployed
-const FACTORY = "0x9C91a7555de8F2D5Db08c8ec07965213225Bf642";
-const ORACLE = "0xcDAC89a61E933d908650712a0eb42e6Cd0094a70";
+const FACTORY = "0xa6A24F191d68E2C1A69cECbAe79Bc8251CFf45Bb";
+const ORACLE = "0x97DF9a62ECc905ea2Eb294A5867181a94cfff69b";
 
 export const CONTRACT_ADDRESSES = {
   gameFactory: FACTORY as `0x${string}`,
